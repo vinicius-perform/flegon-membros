@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient('https://brmkhfvmjgwtbotiaooa.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJybWtoZnZtamd3dGJvdGlhb29hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5NjMyNTMsImV4cCI6MjA4OTUzOTI1M30.5fKNXOiLAhcoMN1y5UB8thflyjsoo1rHngrwi22KmKM');
+const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder-project.supabase.co', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key');
 
 async function test() {
   const { data, error } = await supabase
