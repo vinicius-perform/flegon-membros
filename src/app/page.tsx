@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Lock, Mail } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, UserCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,44 +29,47 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    const cleanEmail = email.toLowerCase().trim();
+    const cleanPassword = password.trim();
+
     try {
-      // Setup master admin direto no Client-Side (Evita hang da API do Next.js)
-      if ((email === 'bruna@sbh.com' && password === '252501as') || email.toLowerCase().trim() === 'diego@sbh.com' || (email === 'admin@flegon.com' && password === 'flegon2026')) {
-        let authUserId: string | undefined;
+      // 1. CREDENCIAL TESTE ADMIN
+      const isAdminTest =
+        cleanEmail === 'admin@flegon.com' ||
+        cleanEmail === 'admin' ||
+        (cleanEmail === 'bruna@sbh.com' && cleanPassword === '252501as') ||
+        cleanEmail === 'diego@sbh.com';
 
-        // Tenta logar primeiro
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        authUserId = signInData?.user?.id;
+      if (isAdminTest) {
+        // Tenta sincronizar com Supabase se disponível, sem travar caso esteja offline/placeholder
+        try {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: cleanEmail.includes('@') ? cleanEmail : 'admin@flegon.com',
+            password: cleanPassword || 'flegon2026',
+          });
 
-        // Se falhar, tenta criar (SignUp)
-        if (signInError) {
-           const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ email: email.trim(), password });
-           if (signUpError && !signUpError.message.includes('already')) {
-              throw new Error(`Auth SignUp Erro: ${signUpError.message}`);
-           }
-           authUserId = signUpData?.user?.id;
-           
-           // Se criou mas não logou, tenta logar novamente
-           if (!authUserId) {
-              const { data: signInRetry } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-              authUserId = signInRetry?.user?.id;
-           }
-        }
+          let authUserId = signInData?.user?.id;
 
-        if (!authUserId) throw new Error("Erro Crítico: Não foi possível obter o ID do usuário no Auth.");
+          if (signInError) {
+            const { data: signUpData } = await supabase.auth.signUp({
+              email: cleanEmail.includes('@') ? cleanEmail : 'admin@flegon.com',
+              password: cleanPassword || 'flegon2026',
+            });
+            authUserId = signUpData?.user?.id;
+          }
 
-        // Atualiza a tabela com o Role = admin de forma Idempotente
-        const { error: dbError } = await supabase.from('users').upsert({
-           id: authUserId,
-           email: email.toLowerCase().trim(),
-           name: email.toLowerCase().trim() === 'diego@sbh.com' ? 'Diego' : (email === 'admin@flegon.com' ? 'Dr. Flegon' : 'Bruna'),
-           password: password,
-           role: 'admin',
-           approval_status: 'approved'
-        }, { onConflict: 'id' });
-
-        if (dbError && dbError.code !== 'PGRST116') {
-           console.error(`Erro na Tabela 'users':`, dbError.message);
+          if (authUserId) {
+            await supabase.from('users').upsert({
+              id: authUserId,
+              email: cleanEmail.includes('@') ? cleanEmail : 'admin@flegon.com',
+              name: 'Dr. Flegon David (Admin)',
+              password: cleanPassword || 'flegon2026',
+              role: 'admin',
+              approval_status: 'approved',
+            }, { onConflict: 'id' });
+          }
+        } catch {
+          // Ignora falhas de conexão remota ao Supabase no mock local
         }
 
         await setSessionAction('admin');
@@ -74,34 +77,61 @@ export default function LoginPage() {
         return;
       }
 
-      // Permite bypass mock para o aluno conforme requisitos
-      if (email === 'aluno' || email === 'aluno@sbh.com' || email === 'aluno@flegon.com') {
+      // 2. CREDENCIAL TESTE MEMBRO / ALUNO NORMAL
+      const isStudentTest =
+        cleanEmail === 'membro@flegon.com' ||
+        cleanEmail === 'aluno@flegon.com' ||
+        cleanEmail === 'aluno@sbh.com' ||
+        cleanEmail === 'aluno' ||
+        cleanEmail === 'membro';
+
+      if (isStudentTest) {
+        // Tenta sincronizar com Supabase se disponível
+        try {
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: cleanEmail.includes('@') ? cleanEmail : 'membro@flegon.com',
+            password: cleanPassword || 'flegon2026',
+          });
+
+          let authUserId = signInData?.user?.id;
+
+          if (signInError) {
+            const { data: signUpData } = await supabase.auth.signUp({
+              email: cleanEmail.includes('@') ? cleanEmail : 'membro@flegon.com',
+              password: cleanPassword || 'flegon2026',
+            });
+            authUserId = signUpData?.user?.id;
+          }
+
+          if (authUserId) {
+            await supabase.from('users').upsert({
+              id: authUserId,
+              email: cleanEmail.includes('@') ? cleanEmail : 'membro@flegon.com',
+              name: 'Dr. Membro Flegon',
+              password: cleanPassword || 'flegon2026',
+              role: 'student',
+              plan_type: 'premium',
+              approval_status: 'approved',
+            }, { onConflict: 'id' });
+          }
+        } catch {
+          // Ignora falhas de conexão remota ao Supabase no mock local
+        }
+
         await setSessionAction('student');
         router.push('/app/home');
         return;
       }
 
-      // Fluxo principal para estudantes logarem
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-      
-      if (signInError) throw new Error('Credenciais inválidas. Verifique e tente novamente.');
+      // 3. FLUXO PADRÃO SUPABASE AUTH PARA OUTROS USUÁRIOS
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email: cleanEmail,
+        password: cleanPassword,
+      });
 
-      // Se for diego@sbh.com, garante admin e redireciona
-      if (email.toLowerCase().trim() === 'diego@sbh.com') {
-        await supabase.from('users').upsert({
-           id: data.user.id,
-           email: 'diego@sbh.com',
-           name: data.user.user_metadata?.name || 'Diego',
-           role: 'admin',
-           approval_status: 'approved'
-        }, { onConflict: 'id' });
+      if (signInError) throw new Error('Credenciais inválidas. Verifique os dados e tente novamente.');
 
-        await setSessionAction('admin');
-        router.push('/admin/dashboard');
-        return;
-      }
-
-      // Consulta os dados do usuário para verificar o papel (role) e aprovação
+      // Consulta papel (role) e aprovação
       const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('role, approval_status')
@@ -109,10 +139,9 @@ export default function LoginPage() {
         .single();
 
       if (profileError && profileError.code !== 'PGRST116') {
-        console.error("Erro ao checar perfil:", profileError);
+        console.error('Erro ao checar perfil:', profileError);
       }
 
-      // Se tiver registro com approval_status pendente ou rejeitado
       if (userProfile) {
         if (userProfile.approval_status === 'pending') {
           await supabase.auth.signOut();
@@ -132,7 +161,6 @@ export default function LoginPage() {
       } else {
         router.push('/app/home');
       }
-
     } catch (err: any) {
       setError(err.message || 'Erro ao realizar login.');
     } finally {
@@ -147,70 +175,65 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-       if (password !== confirmPassword) {
-         throw new Error('As senhas não coincidem.');
-       }
+      if (password !== confirmPassword) {
+        throw new Error('As senhas não coincidem.');
+      }
 
-       if (password.length < 6) {
-         throw new Error('A senha deve ter no mínimo 6 caracteres.');
-       }
+      if (password.length < 6) {
+        throw new Error('A senha deve ter no mínimo 6 caracteres.');
+      }
 
-       if (!name.trim()) {
-         throw new Error('O nome completo é obrigatório.');
-       }
+      if (!name.trim()) {
+        throw new Error('O nome completo é obrigatório.');
+      }
 
-       // Attempt to create user
-       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({ 
-         email, 
-         password,
-         options: {
-           data: { name }
-         } 
-       });
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { name },
+        },
+      });
 
-       if (signUpError) {
-         if (signUpError.message.includes('already')) {
-            throw new Error('Este e-mail já está cadastrado.');
-         }
-         throw new Error(`Erro ao criar conta: ${signUpError.message}`);
-       }
+      if (signUpError) {
+        if (signUpError.message.includes('already')) {
+          throw new Error('Este e-mail já está cadastrado.');
+        }
+        throw new Error(`Erro ao criar conta: ${signUpError.message}`);
+      }
 
-       if (!signUpData.user) {
-         throw new Error('Erro ao criar usuário.');
-       }
+      if (!signUpData.user) {
+        throw new Error('Erro ao criar usuário.');
+      }
 
-       // Create user profile in 'users' table
-       const { error: dbError } = await supabase.from('users').upsert({
-         id: signUpData.user.id,
-         email: email,
-         name: name,
-         password: password,
-         role: 'student',
-         approval_status: 'pending'
-       }, { onConflict: 'id' });
+      const { error: dbError } = await supabase.from('users').upsert({
+        id: signUpData.user.id,
+        email: email,
+        name: name,
+        password: password,
+        role: 'student',
+        approval_status: 'pending',
+      }, { onConflict: 'id' });
 
-       if (dbError) throw new Error(`Erro ao salvar perfil no banco: ${dbError.message}`);
+      if (dbError) throw new Error(`Erro ao salvar perfil no banco: ${dbError.message}`);
 
-       setSuccessMessage('Solicitação enviada com sucesso. Aguarde a aprovação para acessar os conteúdos exclusivos.');
-       
-       // Force sign out in case signUp auto-logged in
-       await supabase.auth.signOut();
+      setSuccessMessage('Solicitação enviada com sucesso. Aguarde a aprovação para acessar os conteúdos exclusivos.');
 
-       // Limpar
-       setEmail('');
-       setPassword('');
-       setConfirmPassword('');
-       setName('');
-       
-       setTimeout(() => {
-         setIsRegistering(false);
-         setSuccessMessage('');
-       }, 5000);
+      await supabase.auth.signOut();
 
+      setEmail('');
+      setPassword('');
+      setConfirmPassword('');
+      setName('');
+
+      setTimeout(() => {
+        setIsRegistering(false);
+        setSuccessMessage('');
+      }, 5000);
     } catch (err: any) {
-       setError(err.message || 'Erro inesperado no cadastro.');
+      setError(err.message || 'Erro inesperado no cadastro.');
     } finally {
-       setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -220,7 +243,6 @@ export default function LoginPage() {
       <div className="absolute inset-0 z-0 pointer-events-none">
         <div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[#BFA783]/8 blur-[160px] rounded-full" />
         <div className="absolute bottom-[-10%] right-[-5%] w-[450px] h-[350px] bg-[#1D292F]/60 blur-[130px] rounded-full" />
-        {/* Subtle grid pattern */}
         <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(#BFA783_1px,transparent_1px)] [background-size:24px_24px]" />
       </div>
 
@@ -246,7 +268,9 @@ export default function LoginPage() {
               {isRegistering ? 'Solicitação de Acesso' : 'Acesso Privado'}
             </CardTitle>
             <CardDescription className="text-[#A6ACAF] text-xs font-sans tracking-wide mt-1.5">
-              {isRegistering ? 'Preencha seus dados para avaliação de perfil' : 'Identifique-se para acessar a área exclusiva de membros'}
+              {isRegistering
+                ? 'Preencha seus dados para avaliação de perfil'
+                : 'Identifique-se para acessar a área exclusiva de membros'}
             </CardDescription>
           </CardHeader>
           <CardContent className="px-7 pb-8 pt-2">
@@ -263,23 +287,23 @@ export default function LoginPage() {
             <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
               <div className="space-y-4">
                 {isRegistering && (
-                   <div className="space-y-1.5">
-                     <Label htmlFor="name" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A6ACAF] ml-1">
-                       Nome Completo
-                     </Label>
-                     <Input
-                       id="name"
-                       type="text"
-                       placeholder="Dr(a). Seu Nome"
-                       value={name}
-                       onChange={(e) => setName(e.target.value)}
-                       required={isRegistering}
-                       disabled={loading}
-                       className="h-11 border-[#695C49]/40 bg-[#1D292F]/80 focus-visible:border-[#BFA783] text-sm"
-                     />
-                   </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="name" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A6ACAF] ml-1">
+                      Nome Completo
+                    </Label>
+                    <Input
+                      id="name"
+                      type="text"
+                      placeholder="Dr(a). Seu Nome"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required={isRegistering}
+                      disabled={loading}
+                      className="h-11 border-[#695C49]/40 bg-[#1D292F]/80 focus-visible:border-[#BFA783] text-sm"
+                    />
+                  </div>
                 )}
-                
+
                 <div className="space-y-1.5">
                   <Label htmlFor="email" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A6ACAF] ml-1">
                     {isRegistering ? 'Email Profissional' : 'Email de Acesso'}
@@ -289,7 +313,7 @@ export default function LoginPage() {
                     <Input
                       id="email"
                       type="text"
-                      placeholder="medico@flegon.com"
+                      placeholder="seu@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
@@ -352,8 +376,8 @@ export default function LoginPage() {
                 </motion.p>
               )}
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={loading}
                 variant="premium"
                 className="w-full h-11 text-xs font-semibold uppercase tracking-[0.2em] mt-3"
@@ -363,40 +387,97 @@ export default function LoginPage() {
                     <div className="w-3.5 h-3.5 border-2 border-[#0A1115]/40 border-t-[#0A1115] rounded-full animate-spin" />
                     <span>Autenticando...</span>
                   </div>
-                ) : (isRegistering ? 'Enviar Solicitação' : 'Entrar na Plataforma')}
+                ) : (
+                  isRegistering ? 'Enviar Solicitação' : 'Entrar na Plataforma'
+                )}
               </Button>
 
-              <div className="text-center pt-3 border-t border-[#695C49]/20 mt-5">
-               {isRegistering ? (
-                 <p className="text-xs text-[#A6ACAF]">
-                   Já possui credencial?{' '}
-                   <button 
-                     type="button" 
-                     onClick={() => { setIsRegistering(false); setError(''); setSuccessMessage(''); }} 
-                     className="text-[#BFA783] hover:text-[#E9DDC9] font-medium transition-colors ml-1 uppercase tracking-wider text-[11px]"
-                   >
-                     Entrar
-                   </button>
-                 </p>
-               ) : (
-                 <p className="text-xs text-[#A6ACAF]">
-                   Ainda não é membro?{' '}
-                   <button 
-                     type="button" 
-                     onClick={() => { setIsRegistering(true); setError(''); setSuccessMessage(''); }} 
-                     className="text-[#BFA783] hover:text-[#E9DDC9] font-medium transition-colors ml-1 uppercase tracking-wider text-[11px]"
-                   >
-                     Solicitar Acesso
-                   </button>
-                 </p>
-               )}
+              {/* Botões de Preenchimento Rápido / Credenciais Demo */}
+              {!isRegistering && (
+                <div className="pt-4 mt-2 border-t border-[#695C49]/20 space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <span className="text-[9px] uppercase tracking-[0.2em] text-[#A6ACAF]/70 font-semibold">
+                      Credenciais de Demonstração
+                    </span>
+                    <span className="text-[8px] text-[#BFA783] font-medium">1 clique para preencher</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail('admin@flegon.com');
+                        setPassword('flegon2026');
+                      }}
+                      className="group p-2.5 rounded-lg bg-[#1D292F]/80 border border-[#695C49]/30 hover:border-[#BFA783] transition-all text-left flex items-start gap-2.5"
+                    >
+                      <div className="h-6 w-6 rounded bg-[#BFA783]/10 border border-[#BFA783]/30 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-[#BFA783]/20">
+                        <ShieldCheck className="h-3.5 w-3.5 text-[#BFA783]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold text-[#E9DDC9] uppercase tracking-wider leading-none">Admin</p>
+                        <p className="text-[8px] text-[#A6ACAF] truncate mt-1">admin@flegon.com</p>
+                      </div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEmail('membro@flegon.com');
+                        setPassword('flegon2026');
+                      }}
+                      className="group p-2.5 rounded-lg bg-[#1D292F]/80 border border-[#695C49]/30 hover:border-[#BFA783] transition-all text-left flex items-start gap-2.5"
+                    >
+                      <div className="h-6 w-6 rounded bg-[#172127] border border-[#695C49]/40 flex items-center justify-center shrink-0 mt-0.5 group-hover:border-[#BFA783]/50">
+                        <UserCheck className="h-3.5 w-3.5 text-[#E9DDC9]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold text-[#E9DDC9] uppercase tracking-wider leading-none">Membro</p>
+                        <p className="text-[8px] text-[#A6ACAF] truncate mt-1">membro@flegon.com</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="text-center pt-2">
+                {isRegistering ? (
+                  <p className="text-xs text-[#A6ACAF]">
+                    Já possui credencial?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRegistering(false);
+                        setError('');
+                        setSuccessMessage('');
+                      }}
+                      className="text-[#BFA783] hover:text-[#E9DDC9] font-medium transition-colors ml-1 uppercase tracking-wider text-[11px]"
+                    >
+                      Entrar
+                    </button>
+                  </p>
+                ) : (
+                  <p className="text-xs text-[#A6ACAF]">
+                    Ainda não é membro?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsRegistering(true);
+                        setError('');
+                        setSuccessMessage('');
+                      }}
+                      className="text-[#BFA783] hover:text-[#E9DDC9] font-medium transition-colors ml-1 uppercase tracking-wider text-[11px]"
+                    >
+                      Solicitar Acesso
+                    </button>
+                  </p>
+                )}
               </div>
             </form>
           </CardContent>
         </Card>
 
         {/* Institutional Footer */}
-        <motion.p 
+        <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
