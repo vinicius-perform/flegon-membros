@@ -1,0 +1,11 @@
+{
+  "id": 1,
+  "banner_title": "Body Sculpt Mentoria",
+  "banner_subtitle": "Aperfeiçoamento médico e refinamento técnico cirúrgico de alto nível com o Dr. Flegon David.",
+  "banner_button_text": "INICIAR JORNADA",
+  "banner_image_url": "https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1920&q=80",
+  "sections": [
+    { "id": "highlight_modules", "label": "Módulos em Destaque", "active": true },
+    { "id": "recent_lessons", "label": "Trilha de Aprendizado", "active": true }
+  ]
+}
