@@ -1,15 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { User, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { clearSessionAction } from '@/app/actions';
 import { FlegonLogo } from '@/components/ui/flegon-logo';
 
 export function StudentHeader() {
-  const pathname = usePathname();
-  
   const handleLogout = async () => {
     await clearSessionAction();
     window.location.href = '/';
@@ -20,39 +17,9 @@ export function StudentHeader() {
       <div className="absolute bottom-0 left-0 h-[1px] w-full bg-gradient-to-r from-transparent via-[#BFA783]/30 to-transparent" />
       
       <div className="relative z-10 flex items-center justify-between px-6 md:px-12 h-20 max-w-[1920px] mx-auto">
-        <div className="flex items-center gap-10">
-          <Link href="/app/home" className="flex items-center transition-opacity hover:opacity-90">
-            <FlegonLogo size="md" subtitle="BODY SCULPT MENTORIA" />
-          </Link>
-          
-          <nav className="hidden lg:flex items-center gap-7">
-            <Link 
-              href="/app/home" 
-              className={`text-[10px] uppercase tracking-[0.2em] font-semibold transition-all relative py-1 ${
-                pathname === '/app/home' 
-                  ? 'text-[#BFA783]' 
-                  : 'text-[#A6ACAF] hover:text-[#F5F3EF]'
-              }`}
-            >
-              Dashboard
-              {pathname === '/app/home' && (
-                <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-[#BFA783] rounded-full" />
-              )}
-            </Link>
-            <Link 
-              href="/app/home" 
-              className="text-[10px] uppercase tracking-[0.2em] font-semibold text-[#A6ACAF] hover:text-[#F5F3EF] transition-all"
-            >
-              Módulos
-            </Link>
-            <Link 
-              href="/app/home" 
-              className="text-[10px] uppercase tracking-[0.2em] font-semibold text-[#A6ACAF] hover:text-[#F5F3EF] transition-all"
-            >
-              Mentoria
-            </Link>
-          </nav>
-        </div>
+        <Link href="/app/home" className="flex items-center transition-opacity hover:opacity-90">
+          <FlegonLogo size="md" subtitle="BODY SCULPT MENTORIA" />
+        </Link>
         
         <div className="flex items-center gap-4">
           <Button 
