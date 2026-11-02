@@ -288,12 +288,12 @@ export default function AdminExperiencePage() {
            </div>
         </div>
         
-        <div className="w-full border border-white/10 rounded-[40px] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] bg-[#050806] ring-1 ring-white/10 relative h-[800px] overflow-y-auto style-scrollbar-hide group/preview">
+        <div className="w-full border border-white/10 rounded-[40px] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.8)] bg-[#0A1115] ring-1 ring-white/10 relative h-[800px] overflow-y-auto style-scrollbar-hide group/preview">
           <div className="absolute top-0 w-full h-24 bg-gradient-to-b from-black/90 via-black/40 to-transparent z-50 px-12 flex items-center pointer-events-none border-b border-white/[0.02]">
              <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 mr-4">
                <GraduationCap className="h-6 w-6 text-primary" />
              </div>
-             <div className="font-heading font-bold text-white tracking-widest text-2xl">SBH <span className="text-primary">PLATINUM</span></div>
+             <div className="font-heading font-bold text-white tracking-widest text-2xl">FLEGON <span className="text-primary">MEMBERS</span></div>
           </div>
           
           <div className="relative w-full h-[550px] flex items-end pb-24 group/hero">
@@ -302,9 +302,9 @@ export default function AdminExperiencePage() {
               alt="Banner Preview"
               className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover/preview:scale-[1.02] transition-transform duration-[3000ms]"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#050806] via-[#050806]/60 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#050806] via-transparent to-transparent" />
-            <div className="absolute bottom-0 left-0 w-full h-[50%] bg-gradient-to-t from-[#050806] to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0A1115] via-[#0A1115]/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0A1115] via-transparent to-transparent" />
+            <div className="absolute bottom-0 left-0 w-full h-[50%] bg-gradient-to-t from-[#0A1115] to-transparent pointer-events-none" />
             
             <div className="relative z-10 px-8 md:px-16 w-full flex flex-col items-center text-center">
               <div className="space-y-10">
@@ -350,7 +350,7 @@ export default function AdminExperiencePage() {
                              alt={module.title}
                              className="absolute inset-0 w-full h-full object-cover opacity-70 transition-all duration-700"
                            />
-                           <div className="absolute inset-0 bg-gradient-to-t from-[#050806] via-transparent to-transparent opacity-90" />
+                           <div className="absolute inset-0 bg-gradient-to-t from-[#0A1115] via-transparent to-transparent opacity-90" />
                            
                            <div className="absolute inset-0 p-6 flex flex-col justify-end">
                              <div className="flex items-center gap-2 mb-2">

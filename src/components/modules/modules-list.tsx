@@ -118,7 +118,7 @@ export function ModulesList({ modules }: { modules: any[] }) {
             <span className="text-[10px] font-bold uppercase tracking-[0.3em]">Arquitetura de Ensino</span>
           </div>
           <h2 className="text-4xl font-heading font-bold tracking-tight text-white uppercase">Gestão de Conteúdo</h2>
-          <p className="text-zinc-500 text-sm mt-1">Estruturação e curadoria dos módulos SBH Premium.</p>
+          <p className="text-zinc-500 text-sm mt-1">Estruturação e curadoria dos módulos Flegon Members.</p>
         </div>
         <CreateModuleDialog />
       </div>

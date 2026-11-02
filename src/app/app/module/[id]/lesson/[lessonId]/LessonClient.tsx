@@ -1,6 +1,6 @@
 'use client';
 
-import { Play, CheckCircle2, ChevronLeft, Menu, Lock, FolderOpen, ChevronRight } from 'lucide-react';
+import { Play, CheckCircle2, ChevronLeft, Menu, Lock, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -103,102 +103,138 @@ export default function LessonClient({ params }: { params: any }) {
               }
            }
         }
-        
+
         setIsBlocked(shouldBlock);
         setBlockReason(reason);
-        
-        const saved = localStorage.getItem(`video-progress-${currentLessonData.id}`);
-        setInitialTime(saved ? Number(saved) : 0);
+
+        // Fetch initial progress time
+        if (user && currentLessonData.id) {
+          const { data: progressData } = await supabase
+            .from('user_progress')
+            .select('progress_seconds')
+            .eq('user_id', user.id)
+            .eq('lesson_id', currentLessonData.id)
+            .single();
+          
+          setInitialTime(progressData?.progress_seconds || 0);
+        } else {
+          setInitialTime(0);
+        }
       }
       
       setLoading(false);
     }
-    
+
     init();
   }, [modId, lessId]);
 
-  const handleProgress = (time: number) => {
-    if (lesson?.id) {
-       localStorage.setItem(`video-progress-${lesson.id}`, time.toString());
+  const handleProgress = async (seconds: number) => {
+    if (!lesson?.id) return;
+    try {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData?.user) return;
+
+      await supabase.from('user_progress').upsert({
+        user_id: authData.user.id,
+        lesson_id: lesson.id,
+        progress_seconds: Math.floor(seconds),
+        completed: false,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id,lesson_id' });
+    } catch (e) {
+      console.error("Erro salvando progresso:", e);
     }
   };
 
   if (loading) {
-     return <div className="pt-20 min-h-screen bg-[#050806] flex items-center justify-center text-zinc-500">Carregando conteúdo...</div>;
+    return (
+      <div className="min-h-screen bg-[#0A1115] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-8 h-8 border-2 border-[#BFA783]/30 border-t-[#BFA783] rounded-full animate-spin" />
+          <span className="text-[10px] uppercase tracking-[0.3em] font-semibold text-[#A6ACAF]">Carregando conteúdo...</span>
+        </div>
+      </div>
+    );
   }
 
   if (isEmptyModule) {
-     return (
-       <div className="pt-20 min-h-screen bg-[#050806] flex flex-col items-center justify-center border-t border-white/5 relative">
-         <div className="flex flex-col items-center text-center max-w-md mx-auto p-8 rounded-2xl bg-black/40 border border-white/10 shadow-2xl mt-48">
-           <FolderOpen className="h-16 w-16 text-primary/40 mb-6" />
-           <h2 className="text-2xl font-bold text-white mb-2">Módulo em Construção</h2>
-           <p className="text-zinc-400 mb-6">Este módulo ainda não possui aulas cadastradas. Volte em breve para novos conteúdos.</p>
-           <Link href="/app/home">
-             <Button className="bg-primary hover:bg-primary/80 text-primary-foreground font-semibold rounded-xl">Voltar para a Home</Button>
-           </Link>
-         </div>
-       </div>
-     );
+    return (
+      <div className="min-h-screen bg-[#0A1115] flex flex-col items-center justify-center p-6 text-center text-[#F5F3EF]">
+        <div className="max-w-md space-y-5">
+          <div className="w-16 h-16 rounded-full bg-[#172127] border border-[#695C49]/30 flex items-center justify-center mx-auto text-[#BFA783]">
+            <Play className="h-6 w-6 ml-0.5" />
+          </div>
+          <h2 className="text-2xl font-serif font-medium text-[#F5F3EF]">Módulo em Estruturação</h2>
+          <p className="text-xs text-[#A6ACAF] leading-relaxed">
+            As aulas deste módulo estão sendo selecionadas pela equipe do Dr. Flegon David e estarão disponíveis em breve.
+          </p>
+          <Link href="/app/home">
+            <Button variant="outline" className="text-xs tracking-wider uppercase">
+              Voltar ao Início
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   if (!lesson) {
-     return <div className="pt-20 min-h-screen bg-[#050806] flex items-center justify-center text-zinc-500">Aula não encontrada.</div>;
+    return (
+      <div className="min-h-screen bg-[#0A1115] flex flex-col items-center justify-center p-6 text-center text-[#F5F3EF]">
+        <p className="text-sm text-[#A6ACAF] mb-4">Aula não encontrada ou indisponível.</p>
+        <Link href="/app/home">
+          <Button variant="outline" className="text-xs tracking-wider uppercase">Voltar ao Início</Button>
+        </Link>
+      </div>
+    );
   }
 
-  const isYouTubeVideo = lesson.video_url?.includes('youtube.com') || lesson.video_url?.includes('youtu.be') || lesson.video_url?.length === 11;
-  const videoId = isYouTubeVideo ? (
-    lesson.video_url?.split('v=')[1]?.split('&')[0] || 
-    lesson.video_url?.split('youtu.be/')[1]?.split('?')[0] || 
-    lesson.video_url
-  ) : 'M7lc1UVf-VE';
+  const videoId = lesson.video_url || 'dQw4w9WgXcQ';
 
   return (
-    <div className="pt-24 min-h-screen bg-background flex flex-col lg:flex-row border-t border-white/5 relative">
-      <div className="flex-1 flex flex-col items-center">
-        <div className="w-full p-4 lg:hidden flex items-center gap-4 bg-black/40 border-b border-white/10">
-          <Link href="/app/home" className="flex items-center gap-2 text-primary hover:text-white text-xs font-bold tracking-widest uppercase">
-             <ChevronLeft className="h-4 w-4" /> Home
-          </Link>
-          <div className="h-4 w-[1px] bg-white/10" />
-          <span className="text-[10px] text-zinc-400 uppercase tracking-widest truncate">{lesson.title}</span>
-        </div>
-
-        <div className="w-full max-w-7xl mx-auto lg:p-10">
+    <div className="bg-[#0A1115] min-h-screen text-[#F5F3EF] flex flex-col lg:flex-row pt-20">
+      {/* Coluna Principal: Player e Detalhes */}
+      <div className="flex-1 flex flex-col min-w-0 border-r border-[#695C49]/20">
+        <div className="w-full bg-[#05090C] flex items-center justify-center relative p-4 md:p-8">
           {isBlocked ? (
-            <div className="w-full aspect-video bg-black/60 backdrop-blur-3xl rounded-3xl flex flex-col items-center justify-center border border-white/5 shadow-2xl p-12 text-center overflow-hidden relative group">
-               <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-transparent pointer-events-none" />
-               <div className="h-24 w-24 bg-primary/10 rounded-full flex items-center justify-center mb-8 ring-8 ring-primary/5 group-hover:ring-primary/10 transition-all duration-700">
-                 <Lock className="w-10 h-10 text-primary drop-shadow-[0_0_10px_rgba(191,155,95,0.3)]" />
-               </div>
-               
-               {blockReason === 'scheduled' ? (
-                 <>
-                   <h2 className="text-4xl font-heading font-bold text-white mb-4 uppercase tracking-tighter">Aula em Breve</h2>
-                   <p className="text-zinc-400 max-w-md mx-auto mb-10 leading-relaxed text-sm">
-                     Prepare-se! Esta aula estará disponível para você no dia <strong className="text-primary">{new Date(lesson.release_date).toLocaleDateString('pt-BR')}</strong>.
-                   </p>
-                   <Link href="/app/home">
-                     <Button variant="outline" className="px-12 h-14 text-sm font-bold uppercase tracking-[0.2em] border-white/10 hover:bg-white/5">
-                       Voltar para a Trilha
-                     </Button>
-                   </Link>
-                 </>
-               ) : (
-                 <>
-                   <h2 className="text-4xl font-heading font-bold text-white mb-4 uppercase tracking-tighter">Experiência Restrita</h2>
-                   <p className="text-zinc-400 max-w-md mx-auto mb-10 leading-relaxed text-sm">Este conteúdo é exclusivo para membros da Sociedade Brasileira de Harmonização com plano **Premium** ativo.</p>
-                   <Button variant="premium" className="px-12 h-14 text-sm font-bold uppercase tracking-[0.2em] shadow-[0_10px_30px_rgba(191,155,95,0.3)]">
-                     Elevar meu Acesso
-                   </Button>
-                 </>
-               )}
+            <div className="w-full aspect-video max-w-5xl rounded-2xl bg-[#172127] border border-[#695C49]/40 flex flex-col items-center justify-center p-8 text-center relative overflow-hidden group shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
+                <div className="absolute inset-0 bg-gradient-to-b from-[#BFA783]/5 to-transparent pointer-events-none" />
+                <div className="h-20 w-20 bg-[#1D292F] border border-[#695C49]/50 rounded-full flex items-center justify-center mb-6 ring-8 ring-[#BFA783]/5">
+                  <Lock className="w-8 h-8 text-[#BFA783]" />
+                </div>
+                
+                {blockReason === 'scheduled' ? (
+                  <>
+                    <h2 className="text-2xl md:text-3xl font-serif font-medium text-[#F5F3EF] mb-3">Conteúdo Programado</h2>
+                    <p className="text-[#A6ACAF] max-w-md mx-auto mb-8 leading-relaxed text-xs">
+                      Esta aula estará liberada para você em{' '}
+                      <strong className="text-[#E9DDC9] font-semibold">
+                        {new Date(lesson.release_date).toLocaleDateString('pt-BR')}
+                      </strong>.
+                    </p>
+                    <Link href="/app/home">
+                      <Button variant="outline" className="px-8 h-11 text-xs font-semibold uppercase tracking-[0.2em]">
+                        Voltar para a Trilha
+                      </Button>
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <h2 className="text-2xl md:text-3xl font-serif font-medium text-[#F5F3EF] mb-3">Conteúdo Exclusivo</h2>
+                    <p className="text-[#A6ACAF] max-w-md mx-auto mb-8 leading-relaxed text-xs">
+                      Este conteúdo faz parte da mentoria avançada do Dr. Flegon David com plano **Premium** ativo.
+                    </p>
+                    <Button variant="premium" className="px-8 h-11 text-xs font-semibold uppercase tracking-[0.2em]">
+                      Solicitar Upgrade
+                    </Button>
+                  </>
+                )}
             </div>
           ) : (
             <motion.div 
-               initial={{ opacity: 0, scale: 0.98 }}
+               initial={{ opacity: 0, scale: 0.99 }}
                animate={{ opacity: 1, scale: 1 }}
-               className={`w-full relative ${lesson.is_premium ? 'shadow-[0_0_60px_rgba(191,155,95,0.1)] ring-1 ring-primary/30' : 'shadow-2xl'} rounded-2xl overflow-hidden bg-black`}
+               className={`w-full max-w-5xl relative ${lesson.is_premium ? 'ring-1 ring-[#BFA783]/40 shadow-[0_0_50px_rgba(191,167,131,0.15)]' : 'shadow-2xl'} rounded-xl overflow-hidden bg-black`}
             >
               {initialTime !== null && (
                  <CustomVideoPlayer 
@@ -208,87 +244,92 @@ export default function LessonClient({ params }: { params: any }) {
                  />
               )}
               {lesson.is_premium && (
-                <div className="absolute top-6 right-6 z-30">
-                  <Badge variant="premium" className="px-4 py-1.5 text-[10px] tracking-[0.2em]">PREMIUM ACCESS</Badge>
+                <div className="absolute top-4 right-4 z-30">
+                  <Badge variant="premium" className="px-3 py-1 text-[9px] tracking-[0.2em]">ACESSO PREMIUM</Badge>
                 </div>
               )}
             </motion.div>
           )}
         </div>
 
-        <div className="w-full max-w-7xl p-8 md:p-12 mx-auto">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8 pb-12 border-b border-white/10">
-            <div className="space-y-4">
+        <div className="w-full max-w-5xl p-6 md:p-10 mx-auto">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-8 border-b border-[#695C49]/25">
+            <div className="space-y-3">
               <div className="flex items-center gap-3">
-                 <Link href="/app/home" className="hidden lg:flex items-center gap-2 text-primary hover:text-white font-bold text-[10px] tracking-[0.2em] uppercase transition-colors">
+                 <Link href="/app/home" className="hidden lg:flex items-center gap-1.5 text-[#BFA783] hover:text-[#E9DDC9] font-semibold text-[10px] tracking-[0.2em] uppercase transition-colors">
                   <ChevronLeft className="h-3 w-3" /> Dashboard
                  </Link>
-                 <div className="hidden lg:block h-3 w-[1px] bg-white/10" />
-                 <span className="text-[10px] text-zinc-500 uppercase tracking-[0.2em]">Módulo • {modId}</span>
+                 <div className="hidden lg:block h-3 w-[1px] bg-[#695C49]/40" />
+                 <span className="text-[10px] text-[#A6ACAF] uppercase tracking-[0.2em] font-medium">Módulo • {modId}</span>
               </div>
               
-              <h1 className="text-3xl md:text-5xl font-heading font-bold text-white leading-tight tracking-tight flex flex-wrap items-center gap-4">
+              <h1 className="text-2xl md:text-4xl font-serif font-medium text-[#F5F3EF] leading-snug tracking-normal flex flex-wrap items-center gap-3">
                 {lesson.title}
                 {lesson.is_premium && (
-                   <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                   <span className="h-2 w-2 rounded-full bg-[#BFA783] animate-pulse" />
                 )}
               </h1>
-              <div className="flex items-center gap-6 text-zinc-500">
+              <div className="flex items-center gap-6 text-[#A6ACAF]">
                 <div className="flex items-center gap-2">
-                  <Play className="h-4 w-4 text-primary/60" />
-                  <span className="text-xs uppercase tracking-widest font-medium">Acesso Vitalício</span>
+                  <Play className="h-3.5 w-3.5 text-[#BFA783]" />
+                  <span className="text-xs uppercase tracking-wider font-medium">Aula Exclusiva</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary/60" />
-                  <span className="text-xs uppercase tracking-widest font-medium">Material de Apoio</span>
+                  <CheckCircle2 className="h-3.5 w-3.5 text-[#BFA783]" />
+                  <span className="text-xs uppercase tracking-wider font-medium">Dr. Flegon David</span>
                 </div>
               </div>
             </div>
             
-            <div className="flex flex-col items-stretch sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button 
                 variant={isBlocked ? "ghost" : "premium"} 
                 disabled={isBlocked} 
-                className="h-14 px-10 text-xs font-bold uppercase tracking-widest gap-3 shadow-lg"
+                className="h-11 px-8 text-xs font-semibold uppercase tracking-[0.18em] gap-2.5"
               >
-                <CheckCircle2 className="h-5 w-5" />
+                <CheckCircle2 className="h-4 w-4" />
                 CONCLUIR AULA
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mt-12">
-             <div className="lg:col-span-2 space-y-8">
-                <div className="bg-white/5 border border-white/5 p-8 rounded-2xl">
-                   <h3 className="text-lg font-heading font-medium text-white mb-4">Sobre esta aula</h3>
-                   <p className="text-zinc-400 leading-relaxed">
-                     Esta aula aborda os princípios fundamentais da harmonização facial, focando em técnicas avançadas de volumização e refinamento estético. Conteúdo exclusivo desenvolvido pela equipe técnica da SBH.
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
+             <div className="lg:col-span-2 space-y-6">
+                <div className="bg-[#172127]/80 border border-[#695C49]/25 p-6 rounded-xl">
+                   <h3 className="text-base font-serif font-medium text-[#F5F3EF] mb-3">Sobre esta aula</h3>
+                   <p className="text-xs text-[#A6ACAF] leading-relaxed">
+                     Esta aula aborda os princípios anatômicos e refinamentos técnicos cirúrgicos da mentoria Body Sculpt. Conteúdo clínico exclusivo desenvolvido pelo Dr. Flegon David para elevar os resultados práticos da sua atuação médica.
                    </p>
                 </div>
              </div>
              <div>
-                <Card className="bg-black/40 border-primary/20 p-6">
-                   <h4 className="text-xs font-bold text-primary uppercase tracking-[0.2em] mb-4">Suporte ao Aluno</h4>
-                   <p className="text-[11px] text-zinc-500 mb-6 leading-relaxed">Dúvidas sobre o conteúdo? Nossa equipe técnica está disponível para suporte via comunidade exclusiva ou canal direto.</p>
-                   <Button variant="outline" className="w-full text-[10px] tracking-widest font-bold h-11">ABRIR CHAMADO</Button>
+                <Card className="bg-[#172127]/90 border border-[#695C49]/35 p-5">
+                   <h4 className="text-[10px] font-semibold text-[#BFA783] uppercase tracking-[0.22em] mb-3">Suporte & Mentoria</h4>
+                   <p className="text-[11px] text-[#A6ACAF] mb-5 leading-relaxed">
+                     Dúvidas técnicas ou casos clínicos? Envie sua solicitação para a equipe da mentoria Body Sculpt.
+                   </p>
+                   <Button variant="outline" className="w-full text-[10px] tracking-widest font-semibold h-10 uppercase">
+                     Suporte Clínico
+                   </Button>
                 </Card>
              </div>
           </div>
         </div>
       </div>
 
-      <div className="w-full lg:w-[450px] border-l border-white/10 bg-black/40 flex flex-col h-auto lg:h-[calc(100vh-96px)] lg:sticky top-24">
-        <div className="p-8 border-b border-white/10 flex items-center justify-between bg-black/20 backdrop-blur-3xl sticky top-0 lg:static z-20">
+      {/* Coluna Lateral: Grade Curricular */}
+      <div className="w-full lg:w-[400px] border-l border-[#695C49]/25 bg-[#0D151A] flex flex-col h-auto lg:h-[calc(100vh-80px)] lg:sticky top-20">
+        <div className="p-6 border-b border-[#695C49]/25 flex items-center justify-between bg-[#172127]/70 backdrop-blur-xl sticky top-0 lg:static z-20">
           <div>
-            <h3 className="text-[10px] font-bold text-primary uppercase tracking-[0.3em]">Cronograma</h3>
-            <p className="text-lg font-heading font-medium text-white mt-1">Grade Curricular</p>
+            <h3 className="text-[9px] font-semibold text-[#BFA783] uppercase tracking-[0.3em]">Trilha do Módulo</h3>
+            <p className="text-base font-serif font-medium text-[#F5F3EF] mt-0.5">Grade de Aulas</p>
           </div>
-          <div className="h-10 w-10 rounded-full border border-white/10 flex items-center justify-center bg-white/5">
-             <Menu className="h-5 w-5 text-zinc-400" />
+          <div className="h-8 w-8 rounded-lg border border-[#695C49]/30 flex items-center justify-center bg-[#1D292F]">
+             <Menu className="h-4 w-4 text-[#A6ACAF]" />
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 style-scrollbar-hide bg-gradient-to-b from-transparent to-primary/5">
+        <div className="flex-1 overflow-y-auto p-4 space-y-2.5 custom-scrollbar">
            {moduleLessons.length > 0 ? moduleLessons.map((l: any, idx: number) => {
              const isActive = l.id === lesson.id;
              const isPremium = l.is_premium;
@@ -299,13 +340,11 @@ export default function LessonClient({ params }: { params: any }) {
              let isBlockedInList = false;
              let isScheduledInList = false;
 
-             // 1. Verificar Estreia
              if (releaseDateList && new Date() < releaseDateList && userRole !== 'admin') {
                 isBlockedInList = true;
                 isScheduledInList = true;
              }
 
-             // 2. Verificar Premium
              if (!isBlockedInList && isPremium && premiumDateList) {
                 if (new Date() >= premiumDateList) {
                   if (userRole !== 'admin' && userPlan !== 'premium') {
@@ -316,27 +355,60 @@ export default function LessonClient({ params }: { params: any }) {
 
              return (
                <Link href={`/app/module/${modId}/lesson/${l.id}`} key={l.id} className="block group">
-                 <div className={`p-4 rounded-xl transition-all duration-300 flex items-center gap-4 ${isActive ? 'bg-primary shadow-[0_8px_30px_rgba(191,155,95,0.3)]' : 'bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/10'}`}>
-                    <div className={`h-8 w-8 shrink-0 rounded-lg flex items-center justify-center ${isActive ? 'bg-white/20' : 'bg-black/20 border border-white/10'}`}>
-                       {isActive ? <Play className="h-4 w-4 text-white fill-current ml-0.5" /> : (isScheduledInList ? <Lock className="h-3 w-3 text-zinc-600" /> : <span className="text-[10px] font-bold text-zinc-600">{String(idx + 1).padStart(2, '0')}</span>)}
+                 <div
+                   className={`p-3.5 rounded-lg transition-all duration-200 flex items-center gap-3.5 ${
+                     isActive
+                       ? 'bg-[#BFA783] text-[#0A1115] shadow-[0_2px_12px_rgba(191,167,131,0.25)]'
+                       : 'bg-[#172127]/60 border border-[#695C49]/20 hover:bg-[#1D292F] hover:border-[#695C49]/40'
+                   }`}
+                 >
+                    <div
+                      className={`h-7 w-7 shrink-0 rounded-md flex items-center justify-center ${
+                        isActive ? 'bg-[#0A1115]/15' : 'bg-[#0A1115]/50 border border-[#695C49]/30'
+                      }`}
+                    >
+                       {isActive ? (
+                         <Play className="h-3.5 w-3.5 text-[#0A1115] fill-current ml-0.5" />
+                       ) : isScheduledInList ? (
+                         <Lock className="h-3 w-3 text-[#A6ACAF]" />
+                       ) : (
+                         <span className="text-[10px] font-semibold text-[#A6ACAF]">{String(idx + 1).padStart(2, '0')}</span>
+                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                       <p className={`text-xs font-bold tracking-wide truncate ${isActive ? 'text-white' : 'text-zinc-200 group-hover:text-primary transition-colors'}`}>{l.title}</p>
-                       <div className="flex items-center gap-2 mt-1">
-                          {isBlockedInList && !isScheduledInList && <Lock className="h-3 w-3 text-red-400/60" />}
-                          {isScheduledInList && <span className="text-[8px] text-primary/60 font-bold uppercase tracking-tighter">Estreia {releaseDateList?.toLocaleDateString('pt-BR')}</span>}
-                          {l.is_premium && <Badge className="h-3.5 px-1.5 text-[8px] bg-primary/20 text-primary border-none">PREMIUM</Badge>}
-                          {!isScheduledInList && <span className={`text-[9px] uppercase tracking-widest font-medium ${isActive ? 'text-white/60' : 'text-zinc-600'}`}>{isActive ? 'Tocando agora' : 'Vídeo aula'}</span>}
+                       <p className={`text-xs font-medium tracking-tight truncate ${isActive ? 'text-[#0A1115] font-semibold' : 'text-[#F5F3EF] group-hover:text-[#BFA783] transition-colors'}`}>
+                         {l.title}
+                       </p>
+                       <div className="flex items-center gap-2 mt-0.5">
+                          {isBlockedInList && !isScheduledInList && <Lock className="h-2.5 w-2.5 text-[#8B2E2E]" />}
+                          {isScheduledInList && (
+                            <span className="text-[8px] text-[#BFA783] font-semibold uppercase tracking-wider">
+                              Estreia {releaseDateList?.toLocaleDateString('pt-BR')}
+                            </span>
+                          )}
+                          {l.is_premium && (
+                            <Badge className="h-3.5 px-1.5 text-[7px] bg-[#BFA783]/20 text-[#BFA783] border-none font-bold">
+                              PREMIUM
+                            </Badge>
+                          )}
+                          {!isScheduledInList && (
+                            <span className={`text-[8px] uppercase tracking-wider ${isActive ? 'text-[#0A1115]/70' : 'text-[#A6ACAF]'}`}>
+                              {isActive ? 'Reproduzindo' : 'Vídeo aula'}
+                            </span>
+                          )}
                        </div>
                     </div>
-                    {!isActive && !isBlockedInList && <ChevronRight className="h-4 w-4 text-zinc-600 group-hover:text-primary transition-all group-hover:translate-x-1" />}
+                    {!isActive && !isBlockedInList && (
+                      <ChevronRight className="h-3.5 w-3.5 text-[#A6ACAF]/50 group-hover:text-[#BFA783] transition-all group-hover:translate-x-0.5" />
+                    )}
                  </div>
                </Link>
              );
            }) : (
-             <div className="text-zinc-600 text-xs text-center italic py-8 border border-dashed border-white/5 rounded-2xl">Aguardando novos conteúdos...</div>
+             <div className="text-[#A6ACAF] text-xs text-center italic py-8 border border-dashed border-[#695C49]/20 rounded-xl">
+               Aguardando novos conteúdos...
+             </div>
            )}
-
         </div>
       </div>
     </div>

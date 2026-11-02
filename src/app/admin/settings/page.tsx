@@ -42,11 +42,11 @@ export default function AdminSettings() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div className="space-y-3">
                         <Label className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest px-1">Nome de Exibição</Label>
-                        <Input defaultValue="SBH PREMIUM" className="bg-white/[0.03] border-white/10 text-sm h-12 uppercase tracking-wide font-medium" />
+                        <Input defaultValue="FLEGON MEMBERS" className="bg-white/[0.03] border-white/10 text-sm h-12 uppercase tracking-wide font-medium" />
                      </div>
                      <div className="space-y-3">
                         <Label className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest px-1">Email de Governança</Label>
-                        <Input defaultValue="suporte@sbh.com" className="bg-white/[0.03] border-white/10 text-sm h-12 font-medium" />
+                        <Input defaultValue="suporte@flegondavid.com.br" className="bg-white/[0.03] border-white/10 text-sm h-12 font-medium" />
                      </div>
                   </div>
                </CardContent>
@@ -77,7 +77,7 @@ export default function AdminSettings() {
          </div>
 
          <div className="space-y-8">
-            <Card className="bg-[#1a1405]/20 border-primary/20 backdrop-blur-3xl p-8 space-y-6">
+            <Card className="bg-[#172127]/60 border-primary/20 backdrop-blur-3xl p-8 space-y-6">
                <div className="h-14 w-14 bg-primary/10 rounded-2xl flex items-center justify-center border border-primary/20">
                   <Settings className="h-7 w-7 text-primary" />
                </div>
@@ -95,7 +95,7 @@ export default function AdminSettings() {
                   <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1 italic">Stable Build</p>
                </div>
                <div className="pt-4 border-t border-white/5">
-                  <p className="text-[10px] text-zinc-600 font-medium">Desenvolvido sob o padrão SBH Premium Identity 2026.</p>
+                  <p className="text-[10px] text-zinc-600 font-medium">Desenvolvido sob o padrão Flegon Members Identity 2026.</p>
                </div>
             </div>
          </div>

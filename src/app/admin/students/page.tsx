@@ -100,7 +100,7 @@ export default function AdminStudents() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `membros_sbh_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `membros_flegon_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -490,7 +490,7 @@ export default function AdminStudents() {
                     onChange={(e) => setNewEmail(e.target.value)} 
                     required
                     disabled={isCreating}
-                    placeholder="medico@sbh.com"
+                    placeholder="medico@flegon.com"
                     className="bg-white/[0.03] border-white/10 focus-visible:ring-primary/40 text-sm h-12"
                   />
                 </div>

@@ -5,22 +5,21 @@ import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, 
-  BookOpen, 
   Users, 
   Settings, 
   LogOut, 
   FolderOpen,
   GraduationCap,
-  UploadCloud,
   Sparkles
 } from 'lucide-react';
 import { clearSessionAction } from '@/app/actions';
+import { FlegonLogo } from '@/components/ui/flegon-logo';
 
 const navigation = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { name: 'Experiência do Aluno', href: '/admin/experience', icon: Sparkles },
   { name: 'Módulos e Aulas', href: '/admin/modules', icon: FolderOpen },
-  { name: 'Alunos', href: '/admin/students', icon: Users },
+  { name: 'Alunos & Médicos', href: '/admin/students', icon: Users },
   { name: 'Matrículas', href: '/admin/enrollments', icon: GraduationCap },
   { name: 'Configurações', href: '/admin/settings', icon: Settings },
 ];
@@ -34,24 +33,20 @@ export function AdminSidebar() {
   };
 
   return (
-    <div className="flex flex-col w-72 h-screen border-r border-white/5 bg-background relative z-50">
-      <div className="absolute inset-y-0 right-0 w-[1px] bg-gradient-to-b from-transparent via-primary/30 to-transparent" />
+    <div className="flex flex-col w-64 h-screen border-r border-[#695C49]/25 bg-[#0A1115] relative z-50 select-none">
+      <div className="absolute inset-y-0 right-0 w-[1px] bg-gradient-to-b from-transparent via-[#BFA783]/20 to-transparent pointer-events-none" />
       
-      <div className="h-24 flex items-center px-8 mb-4">
-        <div className="flex items-center gap-3">
-           <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
-              <GraduationCap className="h-7 w-7 text-primary" />
-           </div>
-           <div className="flex flex-col">
-              <span className="text-xl font-heading font-bold text-white tracking-widest leading-none">SBH</span>
-              <span className="text-[10px] uppercase tracking-[0.4em] text-primary font-bold">ADMIN PANEL</span>
-           </div>
-        </div>
+      {/* Brand Header */}
+      <div className="h-20 flex items-center px-6 border-b border-[#695C49]/20">
+        <Link href="/admin/dashboard" className="transition-opacity hover:opacity-90">
+          <FlegonLogo size="sm" subtitle="ADMIN CONSOLE" />
+        </Link>
       </div>
       
-      <div className="flex-1 overflow-y-auto py-4 px-4 space-y-1.5 style-scrollbar-hide">
-        <div className="px-4 mb-4">
-           <span className="text-[10px] font-bold text-zinc-600 uppercase tracking-[0.2em]">Management</span>
+      {/* Navigation List */}
+      <div className="flex-1 overflow-y-auto py-5 px-3 space-y-1 custom-scrollbar">
+        <div className="px-3 mb-3">
+           <span className="text-[9px] font-semibold text-[#A6ACAF]/70 uppercase tracking-[0.25em]">Gestão & Controle</span>
         </div>
         
         {navigation.map((item) => {
@@ -59,46 +54,44 @@ export function AdminSidebar() {
           return (
             <Link key={item.name} href={item.href}>
               <div
-                className={`flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-300 group relative ${
+                className={`flex items-center gap-3 px-3.5 py-2.5 rounded-lg transition-all duration-200 group relative ${
                   isActive 
-                    ? 'text-white' 
-                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.03]'
+                    ? 'text-[#0A1115] font-semibold' 
+                    : 'text-[#A6ACAF] hover:text-[#F5F3EF] hover:bg-[#172127]/70'
                 }`}
               >
                 {isActive && (
-                  <>
-                    <motion.div
-                      layoutId="admin-sidebar-active"
-                      className="absolute inset-0 bg-primary shadow-[0_0_20px_rgba(191,155,95,0.2)] rounded-xl"
-                      initial={false}
-                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-                    />
-                    <div className="absolute left-0 w-1 h-6 bg-white rounded-r-full" />
-                  </>
+                  <motion.div
+                    layoutId="admin-sidebar-active"
+                    className="absolute inset-0 bg-[#BFA783] rounded-lg shadow-[0_2px_12px_rgba(191,167,131,0.25)]"
+                    initial={false}
+                    transition={{ type: 'spring', bounce: 0.15, duration: 0.5 }}
+                  />
                 )}
-                <item.icon className={`h-5 w-5 relative z-10 transition-colors ${isActive ? 'text-white' : 'group-hover:text-primary'}`} />
-                <span className={`text-[11px] font-bold uppercase tracking-widest relative z-10 ${isActive ? 'text-white' : ''}`}>{item.name}</span>
+                <item.icon className={`h-4 w-4 relative z-10 transition-colors ${isActive ? 'text-[#0A1115]' : 'group-hover:text-[#BFA783]'}`} />
+                <span className={`text-xs uppercase tracking-wider relative z-10 ${isActive ? 'text-[#0A1115]' : ''}`}>{item.name}</span>
               </div>
             </Link>
           );
         })}
       </div>
 
-      <div className="p-6 mt-auto">
-        <div className="bg-white/[0.03] border border-white/5 rounded-2xl p-6 mb-6">
-           <div className="flex items-center gap-3 mb-3">
-              <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">System Online</span>
+      {/* Footer System Status */}
+      <div className="p-4 mt-auto border-t border-[#695C49]/20">
+        <div className="bg-[#172127]/80 border border-[#695C49]/25 rounded-xl p-3.5 mb-3">
+           <div className="flex items-center gap-2 mb-1">
+              <div className="h-1.5 w-1.5 rounded-full bg-[#BFA783] animate-pulse" />
+              <span className="text-[8px] font-semibold text-[#E9DDC9] uppercase tracking-widest">Flegon Members</span>
            </div>
-           <p className="text-[10px] text-zinc-500 font-medium leading-relaxed">Versão 2.4.0 • Build Premium Platinum Edition</p>
+           <p className="text-[10px] text-[#A6ACAF] leading-tight">Dr. Flegon David • v2.4</p>
         </div>
         
         <button 
           onClick={handleLogout}
-          className="flex items-center justify-center gap-3 w-full h-12 rounded-xl bg-white/5 border border-white/10 text-zinc-400 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/20 transition-all font-bold text-[10px] tracking-widest uppercase"
+          className="flex items-center justify-center gap-2 w-full h-10 rounded-lg bg-[#172127]/60 border border-[#695C49]/30 text-[#A6ACAF] hover:bg-[#8B2E2E]/20 hover:text-[#F5F3EF] hover:border-[#8B2E2E]/40 transition-all font-semibold text-[10px] tracking-widest uppercase"
         >
-          <LogOut className="h-4 w-4" />
-          <span>Encerrar Sessão</span>
+          <LogOut className="h-3.5 w-3.5" />
+          <span>Sair</span>
         </button>
       </div>
     </div>

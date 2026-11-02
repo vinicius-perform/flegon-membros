@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { FlegonLogo } from '@/components/ui/flegon-logo';
 
 import { supabase } from '@/lib/supabase';
 import { setSessionAction } from './actions';
@@ -30,7 +31,7 @@ export default function LoginPage() {
 
     try {
       // Setup master admin direto no Client-Side (Evita hang da API do Next.js)
-      if ((email === 'bruna@sbh.com' && password === '252501as') || email.toLowerCase().trim() === 'diego@sbh.com') {
+      if ((email === 'bruna@sbh.com' && password === '252501as') || email.toLowerCase().trim() === 'diego@sbh.com' || (email === 'admin@flegon.com' && password === 'flegon2026')) {
         let authUserId: string | undefined;
 
         // Tenta logar primeiro
@@ -58,7 +59,7 @@ export default function LoginPage() {
         const { error: dbError } = await supabase.from('users').upsert({
            id: authUserId,
            email: email.toLowerCase().trim(),
-           name: email.toLowerCase().trim() === 'diego@sbh.com' ? 'Diego' : 'Bruna',
+           name: email.toLowerCase().trim() === 'diego@sbh.com' ? 'Diego' : (email === 'admin@flegon.com' ? 'Dr. Flegon' : 'Bruna'),
            password: password,
            role: 'admin',
            approval_status: 'approved'
@@ -74,7 +75,7 @@ export default function LoginPage() {
       }
 
       // Permite bypass mock para o aluno conforme requisitos
-      if (email === 'aluno' || email === 'aluno@sbh.com') {
+      if (email === 'aluno' || email === 'aluno@sbh.com' || email === 'aluno@flegon.com') {
         await setSessionAction('student');
         router.push('/app/home');
         return;
@@ -100,34 +101,40 @@ export default function LoginPage() {
         return;
       }
 
-      // Puxa a role do usuário no banco
-      const { data: userRow } = await supabase.from('users').select('role, approval_status').eq('id', data.user.id).single();
-      
-      const role = userRow?.role || 'student';
-      const status = userRow?.approval_status || 'pending';
+      // Consulta os dados do usuário para verificar o papel (role) e aprovação
+      const { data: userProfile, error: profileError } = await supabase
+        .from('users')
+        .select('role, approval_status')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError && profileError.code !== 'PGRST116') {
+        console.error("Erro ao checar perfil:", profileError);
+      }
+
+      // Se tiver registro com approval_status pendente ou rejeitado
+      if (userProfile) {
+        if (userProfile.approval_status === 'pending') {
+          await supabase.auth.signOut();
+          throw new Error('Sua conta ainda está em análise pela equipe do Dr. Flegon David. Aguarde a aprovação.');
+        }
+        if (userProfile.approval_status === 'rejected') {
+          await supabase.auth.signOut();
+          throw new Error('Acesso não aprovado. Entre em contato com o suporte para mais informações.');
+        }
+      }
+
+      const role = userProfile?.role === 'admin' ? 'admin' : 'student';
+      await setSessionAction(role);
 
       if (role === 'admin') {
-        await setSessionAction('admin');
         router.push('/admin/dashboard');
-        return;
+      } else {
+        router.push('/app/home');
       }
-
-      if (status === 'pending') {
-        await supabase.auth.signOut();
-        throw new Error('Seu cadastro foi enviado e está aguardando aprovação.');
-      }
-
-      if (status === 'rejected') {
-        await supabase.auth.signOut();
-        throw new Error('Seu acesso não foi aprovado. Entre em contato com a administração.');
-      }
-
-      await setSessionAction('student');
-      router.push('/app/home');
 
     } catch (err: any) {
-      console.error("Login catch block:", err);
-      setError(err.message || 'Erro inesperado no sistema de login.');
+      setError(err.message || 'Erro ao realizar login.');
     } finally {
       setLoading(false);
     }
@@ -143,9 +150,11 @@ export default function LoginPage() {
        if (password !== confirmPassword) {
          throw new Error('As senhas não coincidem.');
        }
+
        if (password.length < 6) {
          throw new Error('A senha deve ter no mínimo 6 caracteres.');
        }
+
        if (!name.trim()) {
          throw new Error('O nome completo é obrigatório.');
        }
@@ -182,7 +191,7 @@ export default function LoginPage() {
 
        if (dbError) throw new Error(`Erro ao salvar perfil no banco: ${dbError.message}`);
 
-       setSuccessMessage('Cadastro enviado com sucesso. Aguarde a aprovação do administrador para acessar a plataforma.');
+       setSuccessMessage('Solicitação enviada com sucesso. Aguarde a aprovação para acessar os conteúdos exclusivos.');
        
        // Force sign out in case signUp auto-logged in
        await supabase.auth.signOut();
@@ -206,103 +215,98 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-background">
-      {/* Cinematic Background */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-br from-background via-background/95 to-primary/5" />
-        <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] bg-primary/10 blur-[160px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-primary/5 blur-[120px] rounded-full" />
-        {/* Subtle mesh texture */}
-        <div className="absolute inset-0 opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+    <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-[#0A1115]">
+      {/* Luxury Subtle Lighting */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute top-[-15%] left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-[#BFA783]/8 blur-[160px] rounded-full" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[450px] h-[350px] bg-[#1D292F]/60 blur-[130px] rounded-full" />
+        {/* Subtle grid pattern */}
+        <div className="absolute inset-0 opacity-[0.02] bg-[radial-gradient(#BFA783_1px,transparent_1px)] [background-size:24px_24px]" />
       </div>
 
       <motion.div
-        initial={{ opacity: 0, y: 30 }}
+        initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-[440px] px-6"
+        className="relative z-10 w-full max-w-[440px] px-6 py-12"
       >
-        <div className="text-center mb-10">
+        <div className="text-center mb-8 flex flex-col items-center">
           <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.6 }}
-            className="flex flex-col items-center gap-4"
           >
-             <div className="relative group">
-               <div className="absolute -inset-8 bg-primary/20 blur-3xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-               <img 
-                 src="/logo-sbh.png" 
-                 alt="SBH Logo" 
-                 className="relative w-32 h-auto drop-shadow-[0_0_20px_rgba(191,155,95,0.4)]"
-               />
-             </div>
+            <FlegonLogo size="xl" subtitle="DR. FLEGON DAVID • BODY SCULPT" />
           </motion.div>
         </div>
 
-        <Card className="border-white/10 bg-black/40 backdrop-blur-2xl shadow-[0_24px_60px_-15px_rgba(0,0,0,0.5)] overflow-visible">
-          <CardHeader className="text-center pt-8">
-            <CardTitle className="text-xl font-medium text-white/90">
-              {isRegistering ? 'Solicitação de Acesso' : 'Bem-vindo'}
+        <Card className="border-[#695C49]/35 bg-[#172127]/90 backdrop-blur-xl shadow-[0_16px_50px_rgba(0,0,0,0.5)]">
+          <CardHeader className="text-center pt-8 pb-4">
+            <CardTitle className="text-2xl font-serif font-medium text-[#F5F3EF]">
+              {isRegistering ? 'Solicitação de Acesso' : 'Acesso Privado'}
             </CardTitle>
-            <CardDescription className="text-zinc-400 mt-1">
-              {isRegistering ? 'Preencha seus dados profissionais' : 'Identifique-se para acessar a área exclusiva'}
+            <CardDescription className="text-[#A6ACAF] text-xs font-sans tracking-wide mt-1.5">
+              {isRegistering ? 'Preencha seus dados para avaliação de perfil' : 'Identifique-se para acessar a área exclusiva de membros'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="px-8 pb-10">
+          <CardContent className="px-7 pb-8 pt-2">
             {successMessage && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="mb-6 p-4 rounded-lg bg-primary/10 border border-primary/20 text-primary text-sm font-medium text-center"
+                className="mb-5 p-4 rounded-lg bg-[#BFA783]/10 border border-[#BFA783]/30 text-[#E9DDC9] text-xs font-medium text-center"
               >
                 {successMessage}
               </motion.div>
             )}
 
-            <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-5">
+            <form onSubmit={isRegistering ? handleRegister : handleLogin} className="space-y-4">
               <div className="space-y-4">
                 {isRegistering && (
-                   <div className="space-y-2">
-                     <Label htmlFor="name" className="text-xs font-semibold uppercase tracking-widest text-zinc-500 ml-1">Nome Completo</Label>
+                   <div className="space-y-1.5">
+                     <Label htmlFor="name" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A6ACAF] ml-1">
+                       Nome Completo
+                     </Label>
                      <Input
                        id="name"
                        type="text"
-                       placeholder="Seu nome"
+                       placeholder="Dr(a). Seu Nome"
                        value={name}
                        onChange={(e) => setName(e.target.value)}
                        required={isRegistering}
                        disabled={loading}
-                       className="h-12 border-white/5 bg-white/5 focus-visible:ring-primary/20 transition-all duration-300"
+                       className="h-11 border-[#695C49]/40 bg-[#1D292F]/80 focus-visible:border-[#BFA783] text-sm"
                      />
                    </div>
                 )}
                 
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-widest text-zinc-500 ml-1">
-                    {isRegistering ? 'Email Profissional' : 'Usuário ou Email'}
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A6ACAF] ml-1">
+                    {isRegistering ? 'Email Profissional' : 'Email de Acesso'}
                   </Label>
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 group-focus-within:text-primary transition-colors" />
+                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A6ACAF]/60 group-focus-within:text-[#BFA783] transition-colors" />
                     <Input
                       id="email"
-                      type="email"
-                      placeholder="seu@email.com"
+                      type="text"
+                      placeholder="medico@flegon.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
                       disabled={loading}
-                      className="pl-12 h-12 border-white/5 bg-white/5 focus-visible:ring-primary/20 transition-all duration-300"
+                      className="pl-11 h-11 border-[#695C49]/40 bg-[#1D292F]/80 focus-visible:border-[#BFA783] text-sm"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <div className="flex items-center justify-between ml-1">
-                    <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-widest text-zinc-500">Senha</Label>
+                    <Label htmlFor="password" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A6ACAF]">
+                      Senha
+                    </Label>
                   </div>
                   <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 group-focus-within:text-primary transition-colors" />
+                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A6ACAF]/60 group-focus-within:text-[#BFA783] transition-colors" />
                     <Input
                       id="password"
                       type="password"
@@ -311,16 +315,18 @@ export default function LoginPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                       disabled={loading}
-                      className="pl-12 h-12 border-white/5 bg-white/5 focus-visible:ring-primary/20 transition-all duration-300"
+                      className="pl-11 h-11 border-[#695C49]/40 bg-[#1D292F]/80 focus-visible:border-[#BFA783] text-sm"
                     />
                   </div>
                 </div>
 
                 {isRegistering && (
-                  <div className="space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-xs font-semibold uppercase tracking-widest text-zinc-500 ml-1">Confirmar Senha</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="confirmPassword" className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[#A6ACAF] ml-1">
+                      Confirmar Senha
+                    </Label>
                     <div className="relative group">
-                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 group-focus-within:text-primary transition-colors" />
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A6ACAF]/60 group-focus-within:text-[#BFA783] transition-colors" />
                       <Input
                         id="confirmPassword"
                         type="password"
@@ -329,7 +335,7 @@ export default function LoginPage() {
                         onChange={(e) => setConfirmPassword(e.target.value)}
                         required={isRegistering}
                         disabled={loading}
-                        className="pl-12 h-12 border-white/5 bg-white/5 focus-visible:ring-primary/20 transition-all duration-300"
+                        className="pl-11 h-11 border-[#695C49]/40 bg-[#1D292F]/80 focus-visible:border-[#BFA783] text-sm"
                       />
                     </div>
                   </div>
@@ -338,9 +344,9 @@ export default function LoginPage() {
 
               {error && (
                 <motion.p
-                  initial={{ opacity: 0, y: -5 }}
+                  initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="text-xs font-medium text-destructive/90 text-center bg-destructive/5 py-2 rounded-md border border-destructive/10"
+                  className="text-xs font-medium text-[#F5F3EF] text-center bg-[#8B2E2E]/20 py-2.5 px-3 rounded-lg border border-[#8B2E2E]/40"
                 >
                   {error}
                 </motion.p>
@@ -350,24 +356,38 @@ export default function LoginPage() {
                 type="submit" 
                 disabled={loading}
                 variant="premium"
-                className="w-full h-12 text-sm font-bold uppercase tracking-widest mt-4"
+                className="w-full h-11 text-xs font-semibold uppercase tracking-[0.2em] mt-3"
               >
                 {loading ? (
                   <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    <span>Processando...</span>
+                    <div className="w-3.5 h-3.5 border-2 border-[#0A1115]/40 border-t-[#0A1115] rounded-full animate-spin" />
+                    <span>Autenticando...</span>
                   </div>
-                ) : (isRegistering ? 'Solicitar Ingresso' : 'Acessar Área Restrita')}
+                ) : (isRegistering ? 'Enviar Solicitação' : 'Entrar na Plataforma')}
               </Button>
 
-              <div className="text-center mt-6">
+              <div className="text-center pt-3 border-t border-[#695C49]/20 mt-5">
                {isRegistering ? (
-                 <p className="text-xs text-zinc-500">
-                   Já possui cadastro? <button type="button" onClick={() => { setIsRegistering(false); setError(''); setSuccessMessage(''); }} className="text-primary hover:text-[#D4AF37] font-bold transition-colors">VOLTAR AO LOGIN</button>
+                 <p className="text-xs text-[#A6ACAF]">
+                   Já possui credencial?{' '}
+                   <button 
+                     type="button" 
+                     onClick={() => { setIsRegistering(false); setError(''); setSuccessMessage(''); }} 
+                     className="text-[#BFA783] hover:text-[#E9DDC9] font-medium transition-colors ml-1 uppercase tracking-wider text-[11px]"
+                   >
+                     Entrar
+                   </button>
                  </p>
                ) : (
-                 <p className="text-xs text-zinc-500">
-                   Não possui acesso? <button type="button" onClick={() => { setIsRegistering(true); setError(''); setSuccessMessage(''); }} className="text-primary hover:text-[#D4AF37] font-bold transition-colors">SOLICITAR CONTA</button>
+                 <p className="text-xs text-[#A6ACAF]">
+                   Ainda não é membro?{' '}
+                   <button 
+                     type="button" 
+                     onClick={() => { setIsRegistering(true); setError(''); setSuccessMessage(''); }} 
+                     className="text-[#BFA783] hover:text-[#E9DDC9] font-medium transition-colors ml-1 uppercase tracking-wider text-[11px]"
+                   >
+                     Solicitar Acesso
+                   </button>
                  </p>
                )}
               </div>
@@ -379,10 +399,10 @@ export default function LoginPage() {
         <motion.p 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="text-center mt-8 text-[10px] text-zinc-600 uppercase tracking-[0.2em] font-medium"
+          transition={{ delay: 0.6 }}
+          className="text-center mt-8 text-[10px] text-[#A6ACAF]/60 uppercase tracking-[0.22em] font-medium"
         >
-          Sociedade Brasileira de Harmonização © 2026
+          Dr. Flegon David • Body Sculpt Mentoria • Todos os direitos reservados
         </motion.p>
       </motion.div>
     </div>
