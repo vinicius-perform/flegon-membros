@@ -59,7 +59,7 @@ jobs:
           # Automatically inject basePath in your Next.js config file and disable
           # server side image optimization (https://nextjs.org/docs/api-reference/next.config.js/basepath)
           #
-          # You may publish this here: https://github.com/vinicius-perform/areademembos-sbh
+          # You may publish this here: https://github.com/vinicius-perform/flegon-membros
           static_site_generator: next
       - name: Restore cache
         uses: actions/cache@v4
