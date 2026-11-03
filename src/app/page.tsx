@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Lock, Mail, ShieldCheck, UserCheck } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, UserCheck, KeyRound, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +33,7 @@ export default function LoginPage() {
     const cleanPassword = password.trim();
 
     try {
-      // 1. CREDENCIAL TESTE ADMIN
+      // 1. CREDENCIAL TESTE ADMIN (ATIVO NO CÓDIGO)
       const isAdminTest =
         cleanEmail === 'admin@flegon.com' ||
         cleanEmail === 'admin' ||
@@ -77,7 +77,7 @@ export default function LoginPage() {
         return;
       }
 
-      // 2. CREDENCIAL TESTE MEMBRO / ALUNO NORMAL
+      // 2. CREDENCIAL TESTE MEMBRO / ALUNO NORMAL (ATIVO NO CÓDIGO)
       const isStudentTest =
         cleanEmail === 'membro@flegon.com' ||
         cleanEmail === 'aluno@flegon.com' ||
@@ -86,7 +86,6 @@ export default function LoginPage() {
         cleanEmail === 'membro';
 
       if (isStudentTest) {
-        // Tenta sincronizar com Supabase se disponível
         try {
           const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
             email: cleanEmail.includes('@') ? cleanEmail : 'membro@flegon.com',
@@ -131,7 +130,6 @@ export default function LoginPage() {
 
       if (signInError) throw new Error('Credenciais inválidas. Verifique os dados e tente novamente.');
 
-      // Consulta papel (role) e aprovação
       const { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('role, approval_status')
@@ -237,6 +235,12 @@ export default function LoginPage() {
     }
   };
 
+  const fillCredentials = (userEmail: string, userPass: string) => {
+    setEmail(userEmail);
+    setPassword(userPass);
+    setError('');
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center relative overflow-hidden bg-[#0A1115]">
       {/* Luxury Subtle Lighting */}
@@ -250,7 +254,7 @@ export default function LoginPage() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-[440px] px-6 py-12"
+        className="relative z-10 w-full max-w-[460px] px-6 py-12"
       >
         <div className="text-center mb-8 flex flex-col items-center">
           <motion.div
@@ -392,49 +396,63 @@ export default function LoginPage() {
                 )}
               </Button>
 
-              {/* Botões de Preenchimento Rápido / Credenciais Demo */}
+              {/* Bloco de Apresentação do Sistema: Credenciais de Demonstração */}
               {!isRegistering && (
-                <div className="pt-4 mt-2 border-t border-[#695C49]/20 space-y-2">
+                <div className="pt-4 mt-3 border-t border-[#695C49]/25 space-y-2.5">
                   <div className="flex items-center justify-between px-1">
-                    <span className="text-[9px] uppercase tracking-[0.2em] text-[#A6ACAF]/70 font-semibold">
-                      Credenciais de Demonstração
-                    </span>
-                    <span className="text-[8px] text-[#BFA783] font-medium">1 clique para preencher</span>
+                    <div className="flex items-center gap-1.5">
+                      <KeyRound className="h-3 w-3 text-[#BFA783]" />
+                      <span className="text-[9px] uppercase tracking-[0.22em] text-[#E9DDC9] font-semibold">
+                        Apresentação do Sistema
+                      </span>
+                    </div>
+                    <span className="text-[8px] text-[#A6ACAF] font-medium">Toque para preencher</span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('admin@flegon.com');
-                        setPassword('flegon2026');
-                      }}
-                      className="group p-2.5 rounded-lg bg-[#1D292F]/80 border border-[#695C49]/30 hover:border-[#BFA783] transition-all text-left flex items-start gap-2.5"
-                    >
-                      <div className="h-6 w-6 rounded bg-[#BFA783]/10 border border-[#BFA783]/30 flex items-center justify-center shrink-0 mt-0.5 group-hover:bg-[#BFA783]/20">
-                        <ShieldCheck className="h-3.5 w-3.5 text-[#BFA783]" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-semibold text-[#E9DDC9] uppercase tracking-wider leading-none">Admin</p>
-                        <p className="text-[8px] text-[#A6ACAF] truncate mt-1">admin@flegon.com</p>
-                      </div>
-                    </button>
 
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEmail('membro@flegon.com');
-                        setPassword('flegon2026');
-                      }}
-                      className="group p-2.5 rounded-lg bg-[#1D292F]/80 border border-[#695C49]/30 hover:border-[#BFA783] transition-all text-left flex items-start gap-2.5"
+                  <div className="space-y-2">
+                    {/* Credencial Admin */}
+                    <div
+                      onClick={() => fillCredentials('admin@flegon.com', 'flegon2026')}
+                      className="group p-2.5 rounded-lg bg-[#1D292F]/90 border border-[#695C49]/35 hover:border-[#BFA783] transition-all cursor-pointer flex items-center justify-between"
                     >
-                      <div className="h-6 w-6 rounded bg-[#172127] border border-[#695C49]/40 flex items-center justify-center shrink-0 mt-0.5 group-hover:border-[#BFA783]/50">
-                        <UserCheck className="h-3.5 w-3.5 text-[#E9DDC9]" />
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="h-7 w-7 rounded bg-[#BFA783]/15 border border-[#BFA783]/30 flex items-center justify-center shrink-0 group-hover:bg-[#BFA783]/25">
+                          <ShieldCheck className="h-4 w-4 text-[#BFA783]" />
+                        </div>
+                        <div className="min-w-0 text-left">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-semibold text-[#E9DDC9] uppercase tracking-wider">Acesso Admin</span>
+                            <span className="text-[8px] px-1.5 py-0.2 rounded bg-[#BFA783]/20 text-[#BFA783] font-bold">TOTAL</span>
+                          </div>
+                          <p className="text-[9px] text-[#A6ACAF] font-mono truncate mt-0.5">
+                            admin@flegon.com • <span className="text-[#F5F3EF]">flegon2026</span>
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-[10px] font-semibold text-[#E9DDC9] uppercase tracking-wider leading-none">Membro</p>
-                        <p className="text-[8px] text-[#A6ACAF] truncate mt-1">membro@flegon.com</p>
+                      <ArrowRight className="h-3.5 w-3.5 text-[#A6ACAF] group-hover:text-[#BFA783] group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </div>
+
+                    {/* Credencial Membro / Aluno */}
+                    <div
+                      onClick={() => fillCredentials('membro@flegon.com', 'flegon2026')}
+                      className="group p-2.5 rounded-lg bg-[#1D292F]/90 border border-[#695C49]/35 hover:border-[#BFA783] transition-all cursor-pointer flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="h-7 w-7 rounded bg-[#172127] border border-[#695C49]/40 flex items-center justify-center shrink-0 group-hover:border-[#BFA783]/60">
+                          <UserCheck className="h-4 w-4 text-[#E9DDC9]" />
+                        </div>
+                        <div className="min-w-0 text-left">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-semibold text-[#E9DDC9] uppercase tracking-wider">Acesso Membro</span>
+                            <span className="text-[8px] px-1.5 py-0.2 rounded bg-[#172127] text-[#A6ACAF] border border-[#695C49]/30 font-bold">ALUNO</span>
+                          </div>
+                          <p className="text-[9px] text-[#A6ACAF] font-mono truncate mt-0.5">
+                            membro@flegon.com • <span className="text-[#F5F3EF]">flegon2026</span>
+                          </p>
+                        </div>
                       </div>
-                    </button>
+                      <ArrowRight className="h-3.5 w-3.5 text-[#A6ACAF] group-hover:text-[#BFA783] group-hover:translate-x-0.5 transition-all shrink-0" />
+                    </div>
                   </div>
                 </div>
               )}
