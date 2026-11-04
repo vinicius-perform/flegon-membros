@@ -2,11 +2,12 @@
 
 import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
-import fs from 'fs';
-import path from 'path';
-
-const CLOUD_STUDENTS_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a1a6c1fd8b3365';
-const STUDENTS_FILE_PATH = path.join(process.cwd(), 'src', 'data', 'students-data.json');
+import {
+  saveLocalStudents,
+  syncWithCloud,
+  StudentRecord,
+} from '@/lib/students-store';
+import { getStudentsAction } from '@/app/admin/students/actions';
 
 export async function registerAccessRequestAction(formData: {
   name: string;
@@ -49,16 +50,11 @@ export async function registerAccessRequestAction(formData: {
     console.warn('Supabase Auth indisponível para registro:', authErr);
   }
 
-  // 2. Persiste a solicitação na lista de estudantes da nuvem e no cache local
+  // 2. Persiste a solicitação no armazenamento na nuvem (Vercel Blob) e cache local
   try {
-    const res = await fetch(CLOUD_STUDENTS_URL, { cache: 'no-store' });
-    let existingStudents: any[] = [];
-    if (res.ok) {
-      const json = await res.json();
-      existingStudents = json.data?.students || [];
-    }
+    const existing = await getStudentsAction();
 
-    const newStudent = {
+    const newStudent: StudentRecord = {
       id: `usr-${Date.now()}`,
       name,
       email,
@@ -69,32 +65,20 @@ export async function registerAccessRequestAction(formData: {
       created_at: new Date().toISOString(),
     };
 
-    const updatedList = [newStudent, ...existingStudents.filter((s: any) => s.email !== email)];
+    const updatedList = [
+      newStudent,
+      ...existing.filter((s) => s.email.toLowerCase() !== email.toLowerCase()),
+    ];
 
-    // Atualiza nuvem
-    await fetch(CLOUD_STUDENTS_URL, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: {
-          students: updatedList,
-        },
-      }),
-    });
-
-    // Atualiza cache em memória e arquivo local
-    try {
-      (global as any).__flegon_students_cache = updatedList;
-      fs.writeFileSync(STUDENTS_FILE_PATH, JSON.stringify(updatedList, null, 2), 'utf-8');
-    } catch {
-      // Ignora erro de escrita local
-    }
+    saveLocalStudents(updatedList);
+    await syncWithCloud(updatedList);
 
     revalidatePath('/admin/students');
     revalidatePath('/admin/enrollments');
     revalidatePath('/admin/dashboard');
   } catch (cloudErr) {
-    console.warn('Erro ao salvar estudante na nuvem:', cloudErr);
+    console.error('Erro ao salvar estudante:', cloudErr);
+    return { success: false, error: 'Erro ao registrar solicitação. Tente novamente.' };
   }
 
   return {

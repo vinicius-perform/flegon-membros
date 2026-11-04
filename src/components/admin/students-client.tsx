@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Users, GraduationCap, Plus, Clock, AlertCircle, CheckCircle2, ShieldAlert } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, GraduationCap, Plus, Clock, AlertCircle, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { StudentRecord } from '@/lib/students-store';
 import {
-  StudentRecord,
   approveStudentAction,
   rejectStudentAction,
   updateStudentAction,
@@ -25,6 +25,7 @@ interface StudentsClientProps {
 export function StudentsClient({ initialUsers }: StudentsClientProps) {
   const [users, setUsers] = useState<StudentRecord[]>(initialUsers || []);
   const [editingUser, setEditingUser] = useState<StudentRecord | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Edit Form State
   const [editName, setEditName] = useState('');
@@ -43,6 +44,28 @@ export function StudentsClient({ initialUsers }: StudentsClientProps) {
   const [newRole, setNewRole] = useState<'student' | 'admin'>('student');
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState('');
+
+  const refreshStudents = async (showSpin = false) => {
+    if (showSpin) setIsRefreshing(true);
+    try {
+      const fresh = await getStudentsAction();
+      if (Array.isArray(fresh) && fresh.length > 0) {
+        setUsers(fresh);
+      }
+    } catch (e) {
+      console.warn('Erro ao atualizar lista:', e);
+    } finally {
+      if (showSpin) setIsRefreshing(false);
+    }
+  };
+
+  // Polling contínuo a cada 4 segundos para novas solicitações aparecerem automaticamente
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshStudents(false);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const openCreateModal = () => {
     setNewName('');
@@ -206,7 +229,17 @@ export function StudentsClient({ initialUsers }: StudentsClientProps) {
           <h2 className="text-4xl font-heading font-bold tracking-tight text-[#F5F3EF] uppercase">Membros e Acessos</h2>
           <p className="text-[#A6ACAF] text-sm mt-1">Moderação de ingressos e controle de permissões premium.</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={() => refreshStudents(true)}
+            variant="glass"
+            size="sm"
+            disabled={isRefreshing}
+            className="text-[10px] tracking-widest font-bold flex items-center gap-1.5 text-[#A6ACAF] hover:text-[#F5F3EF]"
+          >
+            <RefreshCw className={`h-3 w-3 ${isRefreshing ? 'animate-spin text-[#BFA783]' : ''}`} />
+            ATUALIZAR
+          </Button>
           <Button onClick={handleExportCSV} variant="glass" size="sm" className="text-[10px] tracking-widest font-bold">
             EXPORTAR CSV
           </Button>

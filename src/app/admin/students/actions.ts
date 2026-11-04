@@ -2,143 +2,25 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
-import fs from 'fs';
-import path from 'path';
 import { setSessionAction } from '@/app/actions';
-
-const CLOUD_STUDENTS_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a1a6c1fd8b3365';
-const STUDENTS_FILE_PATH = path.join(process.cwd(), 'src', 'data', 'students-data.json');
+import {
+  type StudentRecord,
+  saveLocalStudents,
+  readLocalStudents,
+  syncWithCloud,
+  fetchStudentsFromCloud,
+} from '@/lib/students-store';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key';
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-export interface StudentRecord {
-  id: string;
-  name: string;
-  email: string;
-  password?: string;
-  role: 'student' | 'admin';
-  plan_type?: 'basic' | 'premium';
-  approval_status: 'pending' | 'approved' | 'rejected';
-  crm?: string;
-  created_at: string;
-}
-
-const DEFAULT_STUDENTS: StudentRecord[] = [
-  {
-    id: 'usr-admin',
-    name: 'Dr. Flegon David',
-    email: 'admin@flegon.com',
-    role: 'admin',
-    plan_type: 'premium',
-    approval_status: 'approved',
-    crm: 'CRM 12345/SP',
-    created_at: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    id: 'usr-membro',
-    name: 'Dr. Membro Flegon',
-    email: 'membro@flegon.com',
-    role: 'student',
-    plan_type: 'premium',
-    approval_status: 'approved',
-    crm: 'CRM 54321/SP',
-    created_at: '2026-02-01T00:00:00.000Z',
-  },
-];
-
-declare global {
-  // eslint-disable-next-line no-var
-  var __flegon_students_cache: StudentRecord[] | undefined;
-}
-
-function readLocalStudents(): StudentRecord[] {
-  try {
-    if (fs.existsSync(STUDENTS_FILE_PATH)) {
-      const content = fs.readFileSync(STUDENTS_FILE_PATH, 'utf-8');
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
-    }
-  } catch (err) {
-    console.warn('Falha ao ler cache local de estudantes:', err);
-  }
-  return DEFAULT_STUDENTS;
-}
-
-function saveLocalStudents(students: StudentRecord[]) {
-  try {
-    global.__flegon_students_cache = students;
-    fs.writeFileSync(STUDENTS_FILE_PATH, JSON.stringify(students, null, 2), 'utf-8');
-  } catch (err) {
-    console.warn('Falha ao salvar cache local de estudantes:', err);
-  }
-}
-
-async function syncWithCloud(students: StudentRecord[]) {
-  try {
-    await fetch(CLOUD_STUDENTS_URL, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        data: {
-          students,
-        },
-      }),
-    });
-  } catch (err) {
-    console.warn('Falha ao sincronizar estudantes na nuvem:', err);
-  }
-}
-
 export async function getStudentsAction(): Promise<StudentRecord[]> {
-  try {
-    // 1. Tenta obter da nuvem
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-
-    const res = await fetch(CLOUD_STUDENTS_URL, {
-      cache: 'no-store',
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-
-    if (res.ok) {
-      const json = await res.json();
-      const cloudStudents: StudentRecord[] = json?.data?.students || [];
-
-      // Garante que os membros padrão estejam na lista caso ainda não existam
-      const mergedMap = new Map<string, StudentRecord>();
-      
-      // Inserir padrões primeiro
-      for (const def of DEFAULT_STUDENTS) {
-        mergedMap.set(def.email.toLowerCase(), def);
-      }
-      
-      // Sobrescrever / adicionar os da nuvem
-      for (const item of cloudStudents) {
-        if (item && item.email) {
-          mergedMap.set(item.email.toLowerCase(), {
-            ...mergedMap.get(item.email.toLowerCase()),
-            ...item,
-          });
-        }
-      }
-
-      const merged = Array.from(mergedMap.values()).sort(
-        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-      saveLocalStudents(merged);
-      return merged;
-    }
-  } catch (err) {
-    console.warn('Erro ao consultar estudantes da nuvem, usando cache local:', err);
+  const fromCloud = await fetchStudentsFromCloud();
+  if (fromCloud && fromCloud.length > 0) {
+    return fromCloud;
   }
 
-  // 2. Fallback para memória ou arquivo local
   if (global.__flegon_students_cache && global.__flegon_students_cache.length > 0) {
     return global.__flegon_students_cache;
   }
@@ -160,7 +42,6 @@ export async function approveStudentAction(userId: string) {
     saveLocalStudents(updated);
     await syncWithCloud(updated);
 
-    // Tentar sincronizar com Supabase se ativo
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')) {
         await supabase
@@ -168,9 +49,7 @@ export async function approveStudentAction(userId: string) {
           .update({ approval_status: 'approved' })
           .or(`id.eq.${userId},email.eq.${userId}`);
       }
-    } catch {
-      // Ignora erro do Supabase
-    }
+    } catch {}
 
     revalidatePath('/admin/students');
     revalidatePath('/admin/enrollments');
@@ -202,9 +81,7 @@ export async function rejectStudentAction(userId: string) {
           .update({ approval_status: 'rejected' })
           .or(`id.eq.${userId},email.eq.${userId}`);
       }
-    } catch {
-      // Ignora erro do Supabase
-    }
+    } catch {}
 
     revalidatePath('/admin/students');
     revalidatePath('/admin/enrollments');
@@ -257,9 +134,7 @@ export async function updateStudentAction(
           .update(updatePayload)
           .or(`id.eq.${userId},email.eq.${userId}`);
       }
-    } catch {
-      // Ignora erro do Supabase
-    }
+    } catch {}
 
     revalidatePath('/admin/students');
     revalidatePath('/admin/enrollments');
@@ -284,9 +159,7 @@ export async function deleteStudentAction(userId: string) {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')) {
         await supabase.from('users').delete().or(`id.eq.${userId},email.eq.${userId}`);
       }
-    } catch {
-      // Ignora erro do Supabase
-    }
+    } catch {}
 
     revalidatePath('/admin/students');
     revalidatePath('/admin/enrollments');
@@ -347,7 +220,6 @@ export async function createDoctorAction(formData: {
     saveLocalStudents(updatedList);
     await syncWithCloud(updatedList);
 
-    // Tentar criar no Supabase Auth e DB se ativo
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')) {
         const { data: signUpData } = await supabase.auth.signUp({
@@ -370,9 +242,7 @@ export async function createDoctorAction(formData: {
           { onConflict: 'id' }
         );
       }
-    } catch {
-      // Ignora erro do Supabase
-    }
+    } catch {}
 
     revalidatePath('/admin/students');
     revalidatePath('/admin/enrollments');
@@ -412,7 +282,7 @@ export async function authenticateUserAction(emailInput: string, passwordInput: 
     return { success: true, role: 'student', redirect: '/app/home' };
   }
 
-  // 3. Consulta na lista de estudantes
+  // 3. Consulta na lista de estudantes consolidada
   const list = await getStudentsAction();
   const matched = list.find((s) => s.email.toLowerCase() === cleanEmail);
 
@@ -480,9 +350,7 @@ export async function authenticateUserAction(emailInput: string, passwordInput: 
         };
       }
     }
-  } catch {
-    // Ignora erro do Supabase
-  }
+  } catch {}
 
   return {
     success: false,
