@@ -10,7 +10,11 @@ import { AlertCircle, CheckCircle2, Image as ImageIcon, Plus } from 'lucide-reac
 import { uploadImageFile } from '@/lib/upload-helper';
 import { createModuleAction } from '@/app/admin/modules/actions';
 
-export function CreateModuleDialog() {
+interface CreateModuleDialogProps {
+  onSuccess?: (newModule: any) => void;
+}
+
+export function CreateModuleDialog({ onSuccess }: CreateModuleDialogProps = {}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
@@ -69,11 +73,15 @@ export function CreateModuleDialog() {
         throw new Error('Falha ao registrar novo módulo.');
       }
 
+      if (res.module && onSuccess) {
+        onSuccess(res.module);
+      }
+
       setSuccessMSG('Módulo criado com sucesso!');
       setTimeout(() => {
         handleOpenChange(false);
         router.refresh();
-      }, 1000);
+      }, 500);
 
     } catch (err: any) {
       setErrorMSG(err.message || 'Erro inesperado.');
@@ -99,78 +107,83 @@ export function CreateModuleDialog() {
         </DialogHeader>
 
         {errorMSG && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
+          <div className="flex items-center gap-2 p-3 rounded-lg overflow-hidden bg-red-500/10 border border-red-500/20 text-red-500 text-sm">
              <AlertCircle className="h-4 w-4 shrink-0" />
              <span>{errorMSG}</span>
           </div>
         )}
 
         {successMSG && (
-          <div className="flex items-center gap-2 p-3 rounded-lg bg-[#BFA783]/20 border border-[#BFA783]/40 text-[#E9DDC9] text-xs">
-             <CheckCircle2 className="h-4 w-4 shrink-0 text-[#BFA783]" />
+          <div className="flex items-center gap-2 p-3 rounded-lg overflow-hidden bg-primary/10 border border-primary/20 text-primary text-sm">
+             <CheckCircle2 className="h-4 w-4 shrink-0" />
              <span>{successMSG}</span>
           </div>
         )}
 
-        <div className="grid gap-5 py-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-[#A6ACAF]">
-              Título do Módulo <span className="text-[#BFA783]">*</span>
-            </Label>
+        <div className="grid gap-6 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="title" className="text-zinc-300">Título do Módulo <span className="text-red-500">*</span></Label>
             <Input 
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Ex: Módulo 1: Introdução"
+              id="title" 
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)} 
+              placeholder="Ex: Módulo 1: Fundamentos da Lipo HD" 
               disabled={isLoading || !!successMSG}
-              className="bg-[#1D292F] border-[#695C49]/40 text-[#F5F3EF] placeholder:text-[#A6ACAF]/50 h-11" 
+              className="bg-black/40 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-zinc-600 h-10" 
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-[#A6ACAF]">Descrição Curta (Opcional)</Label>
+          <div className="space-y-2">
+            <Label htmlFor="desc" className="text-zinc-300">Descrição Curta (Opcional)</Label>
             <Input 
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Sobre o que é este módulo..."
+              id="desc" 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              placeholder="Sobre o que é este módulo..." 
               disabled={isLoading || !!successMSG}
-              className="bg-[#1D292F] border-[#695C49]/40 text-[#F5F3EF] placeholder:text-[#A6ACAF]/50 h-11" 
+              className="bg-black/40 border-white/10 focus-visible:ring-primary/50 text-white placeholder:text-zinc-600 h-10" 
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 mt-1">
-            <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wider text-[#A6ACAF]">Capa do Módulo (Horizontal)</Label>
-              <div 
-                onClick={() => !isLoading && bannerInputRef.current?.click()}
-                className={`aspect-[21/9] w-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-3 transition-all relative group cursor-pointer overflow-hidden ${
-                  isLoading
-                    ? 'opacity-50'
-                    : 'bg-[#0A1115]/80 border-[#695C49]/40 hover:border-[#BFA783]/60 hover:bg-[#1D292F]/60'
-                }`}
-              >
-                {bannerFile ? (
-                   <img src={URL.createObjectURL(bannerFile)} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-90" />
-                ) : (
-                   <>
-                     <div className="h-12 w-12 bg-[#1D292F] rounded-full flex items-center justify-center border border-[#695C49]/40 group-hover:border-[#BFA783]/60 transition-all">
-                       <ImageIcon className="h-6 w-6 text-[#BFA783] group-hover:scale-110 transition-transform" />
-                     </div>
-                     <span className="text-xs text-center text-[#A6ACAF] tracking-wide">
-                       Clique ou arraste uma imagem (1920x800px)
-                     </span>
-                   </>
-                )}
-              </div>
-              <input type="file" ref={bannerInputRef} onChange={(e) => setBannerFile(e.target.files?.[0] || null)} accept="image/*" className="hidden" />
+          <div className="space-y-2">
+            <Label className="text-zinc-300">Capa do Módulo (Horizontal)</Label>
+            <div 
+              onClick={() => !isLoading && !successMSG && bannerInputRef.current?.click()}
+              className="border-2 border-dashed border-white/10 rounded-2xl p-6 text-center cursor-pointer hover:border-primary/50 transition-colors bg-black/20 flex flex-col items-center justify-center min-h-[140px] relative overflow-hidden group"
+            >
+              {bannerFile ? (
+                <div className="relative w-full h-[140px] rounded-lg overflow-hidden">
+                  <img src={URL.createObjectURL(bannerFile)} alt="Preview Horizontal" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span className="text-xs text-white uppercase tracking-widest font-medium">Trocar Imagem</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <ImageIcon className="h-6 w-6 text-zinc-500 mb-2 group-hover:text-primary transition-colors" />
+                  <span className="text-xs text-zinc-400">Clique para selecionar imagem (1920x1080)</span>
+                </>
+              )}
             </div>
+            <input 
+              ref={bannerInputRef} 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={(e) => setBannerFile(e.target.files?.[0] || null)} 
+            />
           </div>
         </div>
-        
-        <div className="flex justify-end gap-3 mt-4 border-t border-[#695C49]/20 pt-4">
-          <Button variant="ghost" disabled={isLoading} className="text-[#A6ACAF] hover:text-[#F5F3EF] hover:bg-[#1D292F]" onClick={() => handleOpenChange(false)}>
+
+        <div className="flex justify-end gap-3 mt-4">
+          <Button variant="ghost" disabled={isLoading} className="text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl px-6" onClick={() => handleOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={isLoading || !!successMSG} variant="premium" className="uppercase tracking-widest text-xs px-6">
+          <Button 
+            onClick={handleSave} 
+            disabled={isLoading || !!successMSG} 
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold rounded-xl px-6 transition-all shadow-[0_4px_20px_0_rgba(212,175,55,0.4)]"
+          >
             {isLoading ? 'Criando...' : 'Criar Módulo'}
           </Button>
         </div>

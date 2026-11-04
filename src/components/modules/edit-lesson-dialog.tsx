@@ -14,9 +14,10 @@ interface EditLessonDialogProps {
   lesson: any; 
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: (updatedLesson: any) => void;
 }
 
-export function EditLessonDialog({ lesson, open, onOpenChange }: EditLessonDialogProps) {
+export function EditLessonDialog({ lesson, open, onOpenChange, onSuccess }: EditLessonDialogProps) {
   const router = useRouter();
 
   const [title, setTitle] = useState('');
@@ -86,12 +87,24 @@ export function EditLessonDialog({ lesson, open, onOpenChange }: EditLessonDialo
         throw new Error('Falha ao atualizar aula.');
       }
 
+      if (onSuccess) {
+        onSuccess({
+          ...lesson,
+          title,
+          video_url: videoUrl,
+          is_premium: isPremium,
+          premium_start_date: isPremium ? (premiumStartDate ? new Date(premiumStartDate + 'T00:00:00').toISOString() : null) : null,
+          release_date: releaseDate ? new Date(releaseDate + 'T00:00:00').toISOString() : null,
+          attachments,
+        });
+      }
+
       setSuccessMSG('Aula atualizada com sucesso!');
       
       setTimeout(() => {
         handleOpenChange(false);
         router.refresh();
-      }, 1000);
+      }, 500);
 
     } catch (err: any) {
       setErrorMSG(err.message || 'Erro inesperado.');
@@ -129,8 +142,8 @@ export function EditLessonDialog({ lesson, open, onOpenChange }: EditLessonDialo
             <Label htmlFor="title" className="text-[#E9DDC9]">Título da Aula <span className="text-red-500">*</span></Label>
             <Input 
               id="title" 
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)} 
               placeholder="Ex: Tipos de Fios Cirúrgicos" 
               disabled={isLoading || !!successMSG}
               className="bg-[#0A1115]/60 border-[#695C49]/40 focus-visible:ring-[#BFA783]/50 text-[#F5F3EF] placeholder:text-[#A6ACAF]/50 h-10" 
@@ -141,8 +154,8 @@ export function EditLessonDialog({ lesson, open, onOpenChange }: EditLessonDialo
             <Label htmlFor="video_url" className="text-[#E9DDC9]">YouTube URL ou ID do Vídeo <span className="text-red-500">*</span></Label>
             <Input 
               id="video_url" 
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
+              value={videoUrl} 
+              onChange={(e) => setVideoUrl(e.target.value)} 
               placeholder="Ex: https://www.youtube.com/watch?v=..." 
               disabled={isLoading || !!successMSG}
               className="bg-[#0A1115]/60 border-[#695C49]/40 focus-visible:ring-[#BFA783]/50 text-[#F5F3EF] placeholder:text-[#A6ACAF]/50 h-10" 

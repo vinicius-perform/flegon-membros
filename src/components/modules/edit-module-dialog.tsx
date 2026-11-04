@@ -14,15 +14,18 @@ interface EditModuleDialogProps {
   module: any;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: (updatedModule: any) => void;
 }
 
-export function EditModuleDialog({ module, open, onOpenChange }: EditModuleDialogProps) {
+export function EditModuleDialog({ module, open, onOpenChange, onSuccess }: EditModuleDialogProps) {
   const router = useRouter();
 
-  const [title, setTitle] = useState(module.title || '');
-  const [description, setDescription] = useState(module.description || '');
+  const [title, setTitle] = useState(module?.title || '');
+  const [description, setDescription] = useState(module?.description || '');
   
-  const [bannerUrl, setBannerUrl] = useState<string | null>(module.banner_image_horizontal || module.cover_image_vertical || null);
+  const [bannerUrl, setBannerUrl] = useState<string | null>(
+    module?.banner_image_horizontal || module?.cover_image_vertical || null
+  );
   const [bannerFile, setBannerFile] = useState<File | null>(null);
 
   const [isLoading, setIsLoading] = useState(false);
@@ -60,11 +63,21 @@ export function EditModuleDialog({ module, open, onOpenChange }: EditModuleDialo
         throw new Error('Falha ao atualizar módulo.');
       }
 
+      if (onSuccess) {
+        onSuccess({
+          ...module,
+          title,
+          description,
+          banner_image_horizontal: finalBanner,
+          cover_image_vertical: finalBanner,
+        });
+      }
+
       setSuccessMSG('Módulo atualizado com sucesso!');
       setTimeout(() => {
         onOpenChange(false);
         router.refresh();
-      }, 1000);
+      }, 500);
 
     } catch (err: any) {
       setErrorMSG(err.message || 'Um erro inesperado ocorreu.');
@@ -97,63 +110,78 @@ export function EditModuleDialog({ module, open, onOpenChange }: EditModuleDialo
           </div>
         )}
 
-        <div className="grid gap-5 py-4">
-          <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-[#A6ACAF]">
-              Título do Módulo <span className="text-[#BFA783]">*</span>
-            </Label>
+        <div className="grid gap-6 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="title" className="text-xs uppercase tracking-wider text-[#A6ACAF]">Título do Módulo <span className="text-[#BFA783]">*</span></Label>
             <Input 
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              id="title" 
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)} 
+              placeholder="Ex: Módulo 1: Fundamentos da Lipo HD" 
               disabled={isLoading || !!successMSG}
-              className="bg-[#1D292F] border-[#695C49]/40 text-[#F5F3EF] h-11" 
+              className="bg-[#1D292F] border-[#695C49]/40 text-[#F5F3EF] h-10" 
             />
           </div>
 
-          <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-wider text-[#A6ACAF]">Descrição Curta</Label>
+          <div className="space-y-2">
+            <Label htmlFor="desc" className="text-xs uppercase tracking-wider text-[#A6ACAF]">Descrição Curta (Opcional)</Label>
             <Input 
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              id="desc" 
+              value={description} 
+              onChange={(e) => setDescription(e.target.value)} 
+              placeholder="Sobre o que é este módulo..." 
               disabled={isLoading || !!successMSG}
-              className="bg-[#1D292F] border-[#695C49]/40 text-[#F5F3EF] h-11" 
+              className="bg-[#1D292F] border-[#695C49]/40 text-[#F5F3EF] h-10" 
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-4 mt-1">
-            <div className="space-y-2">
-              <Label className="text-xs uppercase tracking-wider text-[#A6ACAF]">Capa do Módulo (Horizontal)</Label>
-              <div 
-                onClick={() => !isLoading && bannerInputRef.current?.click()}
-                className={`aspect-[21/9] w-full rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-3 transition-all relative group cursor-pointer overflow-hidden ${
-                  isLoading
-                    ? 'opacity-50'
-                    : 'bg-[#0A1115]/80 border-[#695C49]/40 hover:border-[#BFA783]/60 hover:bg-[#1D292F]/60'
-                }`}
-              >
-                {(bannerFile || bannerUrl) ? (
-                   <img src={bannerFile ? URL.createObjectURL(bannerFile) : bannerUrl!} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-90" />
-                ) : (
-                   <>
-                     <div className="h-12 w-12 bg-[#1D292F] rounded-full flex items-center justify-center border border-[#695C49]/40 group-hover:border-[#BFA783]/60 transition-all">
-                       <ImageIcon className="h-6 w-6 text-[#BFA783] group-hover:scale-110 transition-transform" />
-                     </div>
-                     <span className="text-xs text-center text-[#A6ACAF] tracking-wide">
-                       Clique ou arraste uma imagem (1920x800px)
-                     </span>
-                   </>
-                )}
-              </div>
-              <input type="file" ref={bannerInputRef} onChange={(e) => setBannerFile(e.target.files?.[0] || null)} accept="image/*" className="hidden" />
+          <div className="space-y-2">
+            <Label className="text-xs uppercase tracking-wider text-[#A6ACAF]">Capa do Módulo (Horizontal)</Label>
+            <div 
+              onClick={() => !isLoading && !successMSG && bannerInputRef.current?.click()}
+              className="border-2 border-dashed border-[#695C49]/30 rounded-2xl p-6 text-center cursor-pointer hover:border-[#BFA783]/60 transition-colors bg-[#0A1115]/40 flex flex-col items-center justify-center min-h-[140px] relative overflow-hidden group"
+            >
+              {bannerFile ? (
+                <div className="relative w-full h-[140px] rounded-lg overflow-hidden">
+                  <img src={URL.createObjectURL(bannerFile)} alt="Preview Horizontal" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span className="text-xs text-[#E9DDC9] uppercase tracking-widest font-medium">Trocar Imagem</span>
+                  </div>
+                </div>
+              ) : bannerUrl ? (
+                <div className="relative w-full h-[140px] rounded-lg overflow-hidden">
+                  <img src={bannerUrl} alt="Capa Atual" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                    <span className="text-xs text-[#E9DDC9] uppercase tracking-widest font-medium">Trocar Imagem</span>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <ImageIcon className="h-6 w-6 text-[#A6ACAF] mb-2 group-hover:text-[#BFA783] transition-colors" />
+                  <span className="text-xs text-[#A6ACAF]">Clique para selecionar imagem (1920x1080)</span>
+                </>
+              )}
             </div>
+            <input 
+              ref={bannerInputRef} 
+              type="file" 
+              accept="image/*" 
+              className="hidden" 
+              onChange={(e) => setBannerFile(e.target.files?.[0] || null)} 
+            />
           </div>
         </div>
-        
+
         <div className="flex justify-end gap-3 mt-4 border-t border-[#695C49]/20 pt-4">
           <Button variant="ghost" disabled={isLoading} className="text-[#A6ACAF] hover:text-[#F5F3EF] hover:bg-[#1D292F]" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={isLoading || !!successMSG} variant="premium" className="uppercase tracking-widest text-xs px-6">
+          <Button 
+            onClick={handleSave} 
+            disabled={isLoading || !!successMSG} 
+            variant="premium"
+            className="uppercase tracking-widest text-xs px-6"
+          >
             {isLoading ? 'Salvando...' : 'Salvar Alterações'}
           </Button>
         </div>

@@ -13,9 +13,10 @@ interface CreateLessonDialogProps {
   module: any; 
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: (newLesson: any) => void;
 }
 
-export function CreateLessonDialog({ module, open, onOpenChange }: CreateLessonDialogProps) {
+export function CreateLessonDialog({ module, open, onOpenChange, onSuccess }: CreateLessonDialogProps) {
   const router = useRouter();
 
   const [title, setTitle] = useState('');
@@ -76,12 +77,16 @@ export function CreateLessonDialog({ module, open, onOpenChange }: CreateLessonD
         throw new Error('Falha ao registrar aula no módulo.');
       }
 
+      if (res.lesson && onSuccess) {
+        onSuccess(res.lesson);
+      }
+
       setSuccessMSG('Aula criada com sucesso!');
       
       setTimeout(() => {
         handleOpenChange(false);
         router.refresh();
-      }, 1000);
+      }, 500);
 
     } catch (err: any) {
       setErrorMSG(err.message || 'Erro inesperado.');
@@ -119,8 +124,8 @@ export function CreateLessonDialog({ module, open, onOpenChange }: CreateLessonD
             <Label htmlFor="title" className="text-xs uppercase tracking-wider text-[#A6ACAF]">Título da Aula <span className="text-[#BFA783]">*</span></Label>
             <Input 
               id="title" 
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              value={title} 
+              onChange={(e) => setTitle(e.target.value)} 
               placeholder="Ex: Anatomia Topográfica e Marcações" 
               disabled={isLoading || !!successMSG}
               className="bg-[#1D292F] border-[#695C49]/40 text-[#F5F3EF] h-10" 
@@ -131,8 +136,8 @@ export function CreateLessonDialog({ module, open, onOpenChange }: CreateLessonD
             <Label htmlFor="video_url" className="text-xs uppercase tracking-wider text-[#A6ACAF]">YouTube Video ID ou URL <span className="text-[#BFA783]">*</span></Label>
             <Input 
               id="video_url" 
-              value={videoUrl}
-              onChange={(e) => setVideoUrl(e.target.value)}
+              value={videoUrl} 
+              onChange={(e) => setVideoUrl(e.target.value)} 
               placeholder="Ex: dQw4w9WgXcQ ou https://youtu.be/..." 
               disabled={isLoading || !!successMSG}
               className="bg-[#1D292F] border-[#695C49]/40 text-[#F5F3EF] h-10" 
