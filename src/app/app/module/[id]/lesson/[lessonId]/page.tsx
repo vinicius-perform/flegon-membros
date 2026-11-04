@@ -1,27 +1,31 @@
-import { supabase } from '@/lib/supabase';
+import { getModuleWithLessonsAction } from '@/app/admin/modules/actions';
+import { getSessionAction } from '@/app/actions';
 import LessonClient from './LessonClient';
 
-export async function generateStaticParams() {
-  const { data: modules } = await supabase.from('modules').select('id');
-  const { data: lessons } = await supabase.from('lessons').select('id, module_id');
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-  const params: { id: string; lessonId: string }[] = [];
+export default async function LessonPage({
+  params,
+}: {
+  params: Promise<{ id: string; lessonId: string }> | { id: string; lessonId: string };
+}) {
+  const resolvedParams = await params;
+  const modId = resolvedParams?.id || 'mod-1';
+  const lessId = resolvedParams?.lessonId || 'first';
 
-  if (modules) {
-    modules.forEach((mod: any) => {
-      params.push({ id: String(mod.id), lessonId: 'first' });
-    });
-  }
+  const [{ module, lessons }, sessionRole] = await Promise.all([
+    getModuleWithLessonsAction(modId),
+    getSessionAction(),
+  ]);
 
-  if (lessons) {
-    lessons.forEach((lesson: any) => {
-      params.push({ id: String(lesson.module_id), lessonId: String(lesson.id) });
-    });
-  }
-
-  return params;
-}
-
-export default function LessonPage({ params }: { params: any }) {
-  return <LessonClient params={params} />;
+  return (
+    <LessonClient
+      modId={modId}
+      lessId={lessId}
+      initialModule={module}
+      initialLessons={lessons}
+      initialRole={sessionRole || 'student'}
+    />
+  );
 }

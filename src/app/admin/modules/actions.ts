@@ -14,6 +14,8 @@ export interface LessonItem {
   title: string;
   video_url: string;
   is_premium?: boolean;
+  premium_start_date?: string | null;
+  release_date?: string | null;
   order?: number;
   attachments?: any[];
 }
@@ -45,6 +47,7 @@ const DEFAULT_MODULES: ModuleItem[] = [
         video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         is_premium: false,
         order: 0,
+        attachments: [],
       },
       {
         id: 'les-2',
@@ -52,6 +55,7 @@ const DEFAULT_MODULES: ModuleItem[] = [
         video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         is_premium: true,
         order: 1,
+        attachments: [],
       },
     ],
   },
@@ -70,6 +74,7 @@ const DEFAULT_MODULES: ModuleItem[] = [
         video_url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
         is_premium: false,
         order: 0,
+        attachments: [],
       },
     ],
   },
@@ -145,6 +150,45 @@ export async function getModulesAction(): Promise<ModuleItem[]> {
   return DEFAULT_MODULES;
 }
 
+export async function getModuleWithLessonsAction(moduleId: string): Promise<{
+  module: ModuleItem | null;
+  lessons: LessonItem[];
+}> {
+  const modules = await getModulesAction();
+  const cleanId = String(moduleId).trim().toLowerCase();
+
+  // Search by exact ID first
+  let found = modules.find((m) => String(m.id).toLowerCase() === cleanId);
+
+  // If not found, try alternative formatting
+  if (!found) {
+    if (cleanId.startsWith('mod-')) {
+      const stripped = cleanId.replace('mod-', '');
+      found = modules.find((m) => String(m.id).toLowerCase() === stripped);
+    } else {
+      found = modules.find((m) => String(m.id).toLowerCase() === `mod-${cleanId}`);
+    }
+  }
+
+  // If still not found and only one module exists or ID is 'first', fallback to it
+  if (!found && modules.length > 0) {
+    found = modules[0];
+  }
+
+  if (!found) {
+    return { module: null, lessons: [] };
+  }
+
+  const sortedLessons = [...(found.lessons || [])].sort(
+    (a, b) => (a.order ?? 0) - (b.order ?? 0)
+  );
+
+  return {
+    module: found,
+    lessons: sortedLessons,
+  };
+}
+
 async function saveModulesList(modules: ModuleItem[]) {
   // 1. Salvar na nuvem (PATCH)
   try {
@@ -172,7 +216,10 @@ async function saveModulesList(modules: ModuleItem[]) {
               title: l.title,
               video_url: l.video_url || '',
               is_premium: Boolean(l.is_premium),
+              premium_start_date: l.premium_start_date || null,
+              release_date: l.release_date || null,
               order: l.order || 0,
+              attachments: l.attachments || [],
             })),
           })),
         },
@@ -248,7 +295,6 @@ export async function updateModuleAction(formData: {
 }) {
   const currentModules = await getModulesAction();
 
-  // Tenta atualizar no Supabase se houver conexão
   try {
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')) {
       await supabase
@@ -320,6 +366,9 @@ export async function createLessonAction(formData: {
   title: string;
   videoUrl: string;
   isPremium?: boolean;
+  premiumStartDate?: string | null;
+  releaseDate?: string | null;
+  attachments?: any[];
 }) {
   const currentModules = await getModulesAction();
 
@@ -329,16 +378,23 @@ export async function createLessonAction(formData: {
     title: formData.title.trim(),
     video_url: formData.videoUrl.trim(),
     is_premium: Boolean(formData.isPremium),
+    premium_start_date: formData.premiumStartDate || null,
+    release_date: formData.releaseDate || null,
+    attachments: formData.attachments || [],
     order: 0,
   };
 
   try {
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')) {
       await supabase.from('lessons').insert({
+        id: newLesson.id,
         module_id: formData.moduleId,
         title: newLesson.title,
         video_url: newLesson.video_url,
         is_premium: newLesson.is_premium,
+        premium_start_date: newLesson.premium_start_date,
+        release_date: newLesson.release_date,
+        attachments: newLesson.attachments,
         order: newLesson.order,
       });
     }
@@ -360,6 +416,57 @@ export async function createLessonAction(formData: {
 
   await saveModulesList(updated);
   return { success: true, lesson: newLesson };
+}
+
+export async function updateLessonAction(formData: {
+  id: string;
+  moduleId?: string;
+  title: string;
+  videoUrl: string;
+  isPremium?: boolean;
+  premiumStartDate?: string | null;
+  releaseDate?: string | null;
+  attachments?: any[];
+}) {
+  const currentModules = await getModulesAction();
+
+  try {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')) {
+      await supabase
+        .from('lessons')
+        .update({
+          title: formData.title.trim(),
+          video_url: formData.videoUrl.trim(),
+          is_premium: Boolean(formData.isPremium),
+          premium_start_date: formData.premiumStartDate || null,
+          release_date: formData.releaseDate || null,
+          attachments: formData.attachments || [],
+        })
+        .eq('id', formData.id);
+    }
+  } catch {
+    // Fallback
+  }
+
+  const updated = currentModules.map((m) => ({
+    ...m,
+    lessons: (m.lessons || []).map((l) =>
+      String(l.id) === String(formData.id)
+        ? {
+            ...l,
+            title: formData.title.trim(),
+            video_url: formData.videoUrl.trim(),
+            is_premium: Boolean(formData.isPremium),
+            premium_start_date: formData.premiumStartDate !== undefined ? formData.premiumStartDate : l.premium_start_date,
+            release_date: formData.releaseDate !== undefined ? formData.releaseDate : l.release_date,
+            attachments: formData.attachments || l.attachments || [],
+          }
+        : l
+    ),
+  }));
+
+  await saveModulesList(updated);
+  return { success: true };
 }
 
 export async function deleteLessonAction(lessonId: string) {

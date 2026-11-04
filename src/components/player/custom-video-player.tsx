@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Play, Pause, Volume2, VolumeX, Maximize, FastForward, Rewind } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { extractYouTubeId } from '@/lib/video-helper';
 
 declare global {
   interface Window {
@@ -16,9 +17,9 @@ export default function CustomVideoPlayer({
   onProgress, 
   initialTime = 0 
 }: { 
-  videoId: string, 
-  onProgress?: (time: number) => void, 
-  initialTime?: number 
+  videoId: string; 
+  onProgress?: (time: number) => void; 
+  initialTime?: number; 
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<any>(null);
@@ -31,64 +32,86 @@ export default function CustomVideoPlayer({
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  const cleanVideoId = extractYouTubeId(videoId);
+
   useEffect(() => {
     // Carrega a API do YouTube
-    if (!window.YT) {
+    if (typeof window !== 'undefined' && !window.YT) {
       const tag = document.createElement('script');
       tag.src = 'https://www.youtube.com/iframe_api';
       const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
+      firstScriptTag?.parentNode?.insertBefore(tag, firstScriptTag);
     }
 
     const initPlayer = () => {
-      // Cria player sem nenhum controle nativo (modestbranding, controls=0)
-      playerRef.current = new window.YT.Player(`youtube-player-${videoId}`, {
-        videoId,
-        playerVars: {
-          controls: 0,
-          disablekb: 1,
-          fs: 0,
-          rel: 0,
-          showinfo: 0,
-          modestbranding: 1,
-          start: Math.floor(initialTime),
-          playsinline: 1,
-        },
-        events: {
-          onReady: (event: any) => {
-            setDuration(event.target.getDuration());
-            event.target.setVolume(volume);
-          },
-          onStateChange: (event: any) => {
-            if (event.data === window.YT.PlayerState.PLAYING) {
-              setIsPlaying(true);
-            } else if (event.data === window.YT.PlayerState.PAUSED) {
-              setIsPlaying(false);
-              // Salva progresso ao pausar
-              onProgress?.(event.target.getCurrentTime());
-            } else if (event.data === window.YT.PlayerState.ENDED) {
-              setIsPlaying(false);
-              onProgress?.(event.target.getCurrentTime());
-            }
-          }
+      const targetId = `youtube-player-${cleanVideoId}`;
+      const el = document.getElementById(targetId);
+      if (!el || !window.YT || !window.YT.Player) return;
+
+      try {
+        if (playerRef.current?.destroy) {
+          playerRef.current.destroy();
         }
-      });
+      } catch {}
+
+      try {
+        playerRef.current = new window.YT.Player(targetId, {
+          videoId: cleanVideoId,
+          playerVars: {
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            rel: 0,
+            showinfo: 0,
+            modestbranding: 1,
+            start: Math.floor(initialTime),
+            playsinline: 1,
+          },
+          events: {
+            onReady: (event: any) => {
+              try {
+                setDuration(event.target.getDuration());
+                event.target.setVolume(volume);
+              } catch {}
+            },
+            onStateChange: (event: any) => {
+              if (event.data === window.YT.PlayerState.PLAYING) {
+                setIsPlaying(true);
+              } else if (event.data === window.YT.PlayerState.PAUSED) {
+                setIsPlaying(false);
+                onProgress?.(event.target.getCurrentTime());
+              } else if (event.data === window.YT.PlayerState.ENDED) {
+                setIsPlaying(false);
+                onProgress?.(event.target.getCurrentTime());
+              }
+            },
+            onError: (err: any) => {
+              console.warn('YouTube Player note:', err);
+            },
+          },
+        });
+      } catch (err) {
+        console.warn('Erro ao inicializar YouTube player:', err);
+      }
     };
 
-    if (window.YT && window.YT.Player) {
-      initPlayer();
-    } else {
+    let timer: NodeJS.Timeout | null = null;
+    if (typeof window !== 'undefined' && window.YT && window.YT.Player) {
+      timer = setTimeout(initPlayer, 50);
+    } else if (typeof window !== 'undefined') {
       window.onYouTubeIframeAPIReady = initPlayer;
     }
 
     return () => {
-      // Salva progresso ao desmontar (sair da página)
-      if (playerRef.current && playerRef.current.getCurrentTime) {
-        onProgress?.(playerRef.current.getCurrentTime());
-      }
-      playerRef.current?.destroy?.();
+      if (timer) clearTimeout(timer);
+      try {
+        if (playerRef.current && playerRef.current.getCurrentTime) {
+          onProgress?.(playerRef.current.getCurrentTime());
+        }
+        playerRef.current?.destroy?.();
+      } catch {}
     };
-  }, [videoId]);
+  }, [cleanVideoId, initialTime, onProgress, volume]);
 
   // Sincronizar o progresso a cada segundo e salvar a cada 10s
   useEffect(() => {
@@ -97,7 +120,6 @@ export default function CustomVideoPlayer({
         const time = playerRef.current.getCurrentTime();
         setCurrentTime(time);
         
-        // Save progress every 10 seconds
         if (Math.floor(time) % 10 === 0 && Math.floor(time) > 0) {
           onProgress?.(time);
         }
@@ -119,9 +141,9 @@ export default function CustomVideoPlayer({
 
   const skip = (seconds: number) => {
     if (playerRef.current) {
-       const newTime = playerRef.current.getCurrentTime() + seconds;
-       playerRef.current.seekTo(newTime);
-       setCurrentTime(newTime);
+      const newTime = playerRef.current.getCurrentTime() + seconds;
+      playerRef.current.seekTo(newTime);
+      setCurrentTime(newTime);
     }
   };
 
@@ -174,8 +196,8 @@ export default function CustomVideoPlayer({
       className="relative w-full aspect-video bg-black overflow-hidden group shadow-[0_8px_30px_rgb(0,0,0,0.5)] rounded-2xl border border-white/5"
     >
       {/* IFrame invisível para cliques diretos */}
-      <div className="absolute inset-0 w-full h-full pointer-events-none opacity-100 mix-blend-screen scale-[1.02]">
-        <div id={`youtube-player-${videoId}`} className="w-full h-full" />
+      <div className="absolute inset-0 w-full h-full pointer-events-none opacity-100 scale-[1.02]">
+        <div id={`youtube-player-${cleanVideoId}`} className="w-full h-full" />
       </div>
       
       {/* Overlay transparente bloqueando interação direta com o YouTube */}
@@ -202,7 +224,7 @@ export default function CustomVideoPlayer({
               onChange={handleSeek}
               className="flex-1 h-1.5 bg-white/20 rounded-full appearance-none cursor-pointer hover:h-2 transition-all"
               style={{
-                background: `linear-gradient(to right, oklch(0.75 0.14 80) ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${(currentTime / (duration || 1)) * 100}%)`
+                background: `linear-gradient(to right, #BFA783 ${(currentTime / (duration || 1)) * 100}%, rgba(255,255,255,0.2) ${(currentTime / (duration || 1)) * 100}%)`
               }}
             />
             <span className="text-white/80 text-sm font-medium w-12 text-center tabular-nums">{formatTime(duration)}</span>
@@ -210,7 +232,7 @@ export default function CustomVideoPlayer({
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
-              <button onClick={togglePlay} className="text-white hover:text-primary transition-transform hover:scale-110 active:scale-95">
+              <button onClick={togglePlay} className="text-white hover:text-[#BFA783] transition-transform hover:scale-110 active:scale-95">
                 {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current pl-1" />}
               </button>
               
@@ -222,7 +244,7 @@ export default function CustomVideoPlayer({
               </button>
 
               <div className="flex items-center gap-2 group/volume relative ml-4">
-                <button onClick={toggleMute} className="text-white hover:text-primary transition-colors">
+                <button onClick={toggleMute} className="text-white hover:text-[#BFA783] transition-colors">
                   {isMuted || volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
                 </button>
                 <input 
@@ -246,7 +268,7 @@ export default function CustomVideoPlayer({
                   setPlaybackRate(rate);
                   playerRef.current?.setPlaybackRate(rate);
                 }}
-                className="bg-transparent text-white text-sm font-medium outline-none cursor-pointer hover:text-primary transition-colors appearance-none"
+                className="bg-transparent text-white text-sm font-medium outline-none cursor-pointer hover:text-[#BFA783] transition-colors appearance-none"
               >
                 <option value={1} className="bg-[#050806]">1.0x</option>
                 <option value={1.25} className="bg-[#050806]">1.25x</option>
@@ -254,7 +276,7 @@ export default function CustomVideoPlayer({
                 <option value={2} className="bg-[#050806]">2.0x</option>
               </select>
 
-              <button onClick={toggleFullscreen} className="text-white hover:text-primary transition-colors hover:scale-110">
+              <button onClick={toggleFullscreen} className="text-white hover:text-[#BFA783] transition-colors hover:scale-110">
                 <Maximize className="w-5 h-5" />
               </button>
             </div>

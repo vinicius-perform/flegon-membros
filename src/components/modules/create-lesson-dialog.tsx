@@ -6,8 +6,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { AlertCircle, CheckCircle2, FileText, Plus, Trash2, Loader2 } from 'lucide-react';
-import { uploadImageFile } from '@/lib/upload-helper';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 import { createLessonAction } from '@/app/admin/modules/actions';
 
 interface CreateLessonDialogProps {
@@ -27,7 +26,6 @@ export function CreateLessonDialog({ module, open, onOpenChange }: CreateLessonD
   const [attachments, setAttachments] = useState<any[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [errorMSG, setErrorMSG] = useState<string | null>(null);
   const [successMSG, setSuccessMSG] = useState<string | null>(null);
 
@@ -69,6 +67,9 @@ export function CreateLessonDialog({ module, open, onOpenChange }: CreateLessonD
         title,
         videoUrl,
         isPremium,
+        premiumStartDate: isPremium ? (premiumStartDate ? new Date(premiumStartDate + 'T00:00:00').toISOString() : null) : null,
+        releaseDate: releaseDate ? new Date(releaseDate + 'T00:00:00').toISOString() : null,
+        attachments,
       });
 
       if (!res.success) {
@@ -166,6 +167,20 @@ export function CreateLessonDialog({ module, open, onOpenChange }: CreateLessonD
                 Aula Exclusiva Premium
               </Label>
             </div>
+            
+            {isPremium && (
+              <div className="space-y-2 mt-2 pl-6 border-l-2 border-[#BFA783]/40">
+                <Label htmlFor="premium_start_date" className="text-xs text-[#A6ACAF]">Data de ativação do Premium</Label>
+                <Input 
+                  id="premium_start_date" 
+                  type="date"
+                  value={premiumStartDate}
+                  onChange={(e) => setPremiumStartDate(e.target.value)}
+                  disabled={isLoading || !!successMSG}
+                  className="bg-[#1D292F] border-[#695C49]/40 text-[#F5F3EF] h-10 w-full cursor-pointer" 
+                />
+              </div>
+            )}
           </div>
         </div>
         
