@@ -5,6 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
+import { BannerTitle } from '@/components/ui/banner-title';
 
 function ModuleRow({ title, modules }: { title: string; modules: any[] }) {
   if (!modules?.length) return null;
@@ -85,14 +86,17 @@ export default function StudentHomeClient({
   modulesToUse: any[];
 }) {
   const banner = {
-    title: config?.banner_title || 'Body Sculpt Mentoria',
+    title: config?.banner_title || 'FLEGON DAVID',
+    titleColor: config?.banner_title_color || '#F5F3EF',
+    highlightWord: config?.banner_highlight_word ?? 'DAVID',
+    highlightColor: config?.banner_highlight_color || 'gold-gradient',
     subtitle:
       config?.banner_subtitle ||
       'Aperfeiçoamento médico e refinamento técnico cirúrgico de alto nível com o Dr. Flegon David.',
     buttonText: config?.banner_button_text || 'INICIAR JORNADA',
     imageUrl:
       config?.banner_image_url ||
-      'https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1920&q=80',
+      'https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg',
   };
 
   const sections = config?.sections || [
@@ -142,19 +146,13 @@ export default function StudentHomeClient({
               <div className="h-8 w-[1px] bg-gradient-to-b from-[#BFA783]/60 to-transparent" />
             </div>
 
-            <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-serif font-light text-[#F5F3EF] leading-[1.05] tracking-tight">
-              {banner.title.split(' ').map((word: string, i: number) => (
-                <span
-                  key={i}
-                  className={
-                    i % 2 === 0
-                      ? 'inline-block mr-3'
-                      : 'inline-block mr-3 font-normal text-transparent bg-clip-text bg-gradient-to-b from-[#BFA783] to-[#E9DDC9]'
-                  }
-                >
-                  {word}
-                </span>
-              ))}
+            <h1 className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-serif font-light leading-[1.05] tracking-tight">
+              <BannerTitle
+                title={banner.title}
+                titleColor={banner.titleColor}
+                highlightWord={banner.highlightWord}
+                highlightColor={banner.highlightColor}
+              />
             </h1>
 
             <p className="text-sm md:text-base text-[#A6ACAF] font-sans font-normal leading-relaxed max-w-xl mx-auto">
