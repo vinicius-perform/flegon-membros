@@ -12,6 +12,7 @@ import { FlegonLogo } from '@/components/ui/flegon-logo';
 
 import { supabase } from '@/lib/supabase';
 import { setSessionAction } from './actions';
+import { registerAccessRequestAction } from './actions/register-action';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -185,39 +186,21 @@ export default function LoginPage() {
         throw new Error('O nome completo é obrigatório.');
       }
 
-      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+      if (!email.trim() || !email.includes('@')) {
+        throw new Error('Por favor, informe um e-mail válido.');
+      }
+
+      const res = await registerAccessRequestAction({
+        name,
         email,
         password,
-        options: {
-          data: { name },
-        },
       });
 
-      if (signUpError) {
-        if (signUpError.message.includes('already')) {
-          throw new Error('Este e-mail já está cadastrado.');
-        }
-        throw new Error(`Erro ao criar conta: ${signUpError.message}`);
+      if (!res.success) {
+        throw new Error(res.error || 'Erro ao registrar solicitação.');
       }
 
-      if (!signUpData.user) {
-        throw new Error('Erro ao criar usuário.');
-      }
-
-      const { error: dbError } = await supabase.from('users').upsert({
-        id: signUpData.user.id,
-        email: email,
-        name: name,
-        password: password,
-        role: 'student',
-        approval_status: 'pending',
-      }, { onConflict: 'id' });
-
-      if (dbError) throw new Error(`Erro ao salvar perfil no banco: ${dbError.message}`);
-
-      setSuccessMessage('Solicitação enviada com sucesso. Aguarde a aprovação para acessar os conteúdos exclusivos.');
-
-      await supabase.auth.signOut();
+      setSuccessMessage('Solicitação enviada com sucesso! Seus dados foram recebidos pela equipe do Dr. Flegon David e estão em análise para liberação do acesso.');
 
       setEmail('');
       setPassword('');

@@ -1,17 +1,17 @@
-import { supabase } from '@/lib/supabase';
 import StudentHomeClient from '@/components/layout/student-home-client';
 import { getHomeConfigAction } from '@/app/admin/experience/actions';
+import { getModulesAction } from '@/app/admin/modules/actions';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function StudentHome() {
-  const [config, modulesResult] = await Promise.all([
+  const [config, modules] = await Promise.all([
     getHomeConfigAction(),
-    supabase.from('modules').select('*').order('order', { ascending: true })
+    getModulesAction(),
   ]);
-  
-  const modulesToUse = modulesResult.data || [];
 
-  return <StudentHomeClient config={config} modulesToUse={modulesToUse} />;
+  const activeModules = (modules || []).filter((m: any) => m.status !== 'archived');
+
+  return <StudentHomeClient config={config} modulesToUse={activeModules} />;
 }

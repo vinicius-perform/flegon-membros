@@ -18,6 +18,7 @@ import { EditModuleDialog } from './edit-module-dialog';
 import { CreateModuleDialog } from './create-module-dialog';
 import { CreateLessonDialog } from './create-lesson-dialog';
 import { EditLessonDialog } from './edit-lesson-dialog';
+import { archiveModuleAction, deleteModuleAction, deleteLessonAction } from '@/app/admin/modules/actions';
 
 export function ModulesList({ modules }: { modules: any[] }) {
   const router = useRouter();
@@ -35,8 +36,8 @@ export function ModulesList({ modules }: { modules: any[] }) {
     
     setIsArchiving(moduleId);
     try {
-      const { error } = await supabase.from('modules').update({ status: 'archived' }).eq('id', moduleId);
-      if (error) throw error;
+      await archiveModuleAction(moduleId, 'archived');
+
       router.refresh(); 
     } catch (err: any) {
       alert(`Erro ao arquivar: ${err.message}`);
@@ -48,8 +49,8 @@ export function ModulesList({ modules }: { modules: any[] }) {
   const handleRestore = async (e: React.MouseEvent, moduleId: string) => {
     e.stopPropagation();
     try {
-      const { error } = await supabase.from('modules').update({ status: 'active' }).eq('id', moduleId);
-      if (error) throw error;
+      await archiveModuleAction(moduleId, 'active');
+
       router.refresh(); 
     } catch (err: any) {
       alert(`Erro ao restaurar: ${err.message}`);
@@ -62,8 +63,8 @@ export function ModulesList({ modules }: { modules: any[] }) {
     
     setIsDeletingModule(moduleId);
     try {
-      const { error } = await supabase.from('modules').delete().eq('id', moduleId);
-      if (error) throw error;
+      await deleteModuleAction(moduleId);
+
       router.refresh(); 
     } catch (err: any) {
       alert(`Erro ao excluir permanentemente: ${err.message}`);
@@ -91,8 +92,8 @@ export function ModulesList({ modules }: { modules: any[] }) {
     
     setIsDeletingLesson(lessonId);
     try {
-      const { error } = await supabase.from('lessons').delete().eq('id', lessonId);
-      if (error) throw error;
+      await deleteLessonAction(lessonId);
+
       router.refresh(); 
     } catch (err: any) {
       alert(`Erro ao excluir: ${err.message}`);

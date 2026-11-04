@@ -1,0 +1,48 @@
+[
+  {
+    "id": "mod-1",
+    "title": "Módulo 1: Fundamentos da Body Sculpt & Anatomia Aplicada",
+    "description": "Princípios essenciais de escultura corporal e análise anatômica de precisão com Dr. Flegon David.",
+    "cover_image_vertical": "https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg",
+    "banner_image_horizontal": "https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg",
+    "order": 0,
+    "status": "active",
+    "lessons": [
+      {
+        "id": "les-1",
+        "title": "Aula Inaugural: Visão Geral e Filosofia Body Sculpt",
+        "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "is_premium": false,
+        "order": 0,
+        "attachments": []
+      },
+      {
+        "id": "les-2",
+        "title": "Anatomia Topográfica e Marcações Cirúrgicas de Precisão",
+        "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "is_premium": true,
+        "order": 1,
+        "attachments": []
+      }
+    ]
+  },
+  {
+    "id": "mod-2",
+    "title": "Módulo 2: Técnicas Cirúrgicas Avançadas & Refinamento",
+    "description": "Passo a passo cirúrgico detalhado, marcações e técnicas proprietárias de definição corporal.",
+    "cover_image_vertical": "https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=800&q=80",
+    "banner_image_horizontal": "https://images.unsplash.com/photo-1551076805-e1869033e561?auto=format&fit=crop&w=1920&q=80",
+    "order": 1,
+    "status": "active",
+    "lessons": [
+      {
+        "id": "les-3",
+        "title": "Técnica de Lipoaspiração de Alta Definição",
+        "video_url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "is_premium": false,
+        "order": 0,
+        "attachments": []
+      }
+    ]
+  }
+]
