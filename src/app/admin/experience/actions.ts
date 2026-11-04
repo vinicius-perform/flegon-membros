@@ -6,6 +6,15 @@ import path from 'path';
 import { supabase } from '@/lib/supabase';
 
 const CLOUD_STORE_URL = 'https://api.restful-api.dev/objects/ff808181a09d98f701a1a6ae99bc32c2';
+const OFFICIAL_BANNER = 'https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg';
+
+function sanitizeBannerImage(url?: string | null): string {
+  if (!url || typeof url !== 'string' || url.startsWith('/uploads/') || url.trim() === '') {
+    return OFFICIAL_BANNER;
+  }
+  return url.trim();
+}
+
 const localConfigPath = path.join(process.cwd(), 'src', 'data', 'home-config.json');
 
 export interface HomeConfigData {
@@ -45,7 +54,7 @@ export async function getHomeConfigAction(): Promise<HomeConfigData> {
     if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')) {
       const { data, error } = await supabase.from('home_config').select('*').eq('id', 1).single();
       if (!error && data && data.banner_title) {
-        return data as HomeConfigData;
+        return { ...data, banner_image_url: sanitizeBannerImage(data.banner_image_url) } as HomeConfigData;
       }
     }
   } catch {
@@ -66,7 +75,7 @@ export async function getHomeConfigAction(): Promise<HomeConfigData> {
     if (res.ok) {
       const json = await res.json();
       if (json && json.data && json.data.banner_title) {
-        return json.data as HomeConfigData;
+        return { ...json.data, banner_image_url: sanitizeBannerImage(json.data.banner_image_url) } as HomeConfigData;
       }
     }
   } catch (cloudErr) {
@@ -78,7 +87,7 @@ export async function getHomeConfigAction(): Promise<HomeConfigData> {
     const raw = await readFile(localConfigPath, 'utf8');
     const local = JSON.parse(raw);
     if (local && local.banner_title) {
-      return local as HomeConfigData;
+      return { ...local, banner_image_url: sanitizeBannerImage(local.banner_image_url) } as HomeConfigData;
     }
   } catch {
     // Falha silenciosa
@@ -105,7 +114,7 @@ export async function saveHomeConfigAction(data: {
     banner_highlight_color: data.banner_highlight_color || 'gold-gradient',
     banner_subtitle: data.banner_subtitle,
     banner_button_text: data.banner_button_text,
-    banner_image_url: data.banner_image_url,
+    banner_image_url: sanitizeBannerImage(data.banner_image_url),
     sections: data.sections,
   };
 

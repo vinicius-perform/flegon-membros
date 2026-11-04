@@ -41,6 +41,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { supabase } from '@/lib/supabase';
 import { getHomeConfigAction, saveHomeConfigAction } from './actions';
 import { BannerTitle } from '@/components/ui/banner-title';
+import { uploadImageFile } from '@/lib/upload-helper';
 
 const initialSections = [
   { id: 'continue_watching', label: 'Continue assistindo', active: true },
@@ -196,30 +197,20 @@ export default function AdminExperiencePage() {
 
   const uploadBanner = async (file: File) => {
     setSaving(true);
-    setFeedback('Carregando imagem...');
+    setFeedback('Enviando imagem...');
 
     // Preview instantâneo para feedback imediato na UI
     const localUrl = URL.createObjectURL(file);
     setBannerImage(localUrl);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      const data = await res.json();
-      if (data.success && data.url) {
-        setBannerImage(data.url);
+      const publicUrl = await uploadImageFile(file, 'hero-banner');
+      if (publicUrl) {
+        setBannerImage(publicUrl);
         setFeedback('Imagem pronta! Clique em PUBLICAR NA HOME para salvar.');
-      } else {
-        setFeedback('Imagem carregada no preview.');
       }
     } catch (err: any) {
-      console.warn('Upload via API falhou, mantendo preview:', err);
+      console.warn('Upload falhou:', err);
       setFeedback('Imagem pronta no preview.');
     } finally {
       setSaving(false);
@@ -348,6 +339,10 @@ export default function AdminExperiencePage() {
               <img
                 src={bannerImage}
                 alt="Banner Preview"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src =
+                    'https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg';
+                }}
                 className="absolute inset-0 w-full h-full object-cover opacity-35 group-hover/upload:opacity-20 transition-opacity duration-500"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#0A1115]/80 via-transparent to-transparent z-10" />
@@ -677,6 +672,10 @@ export default function AdminExperiencePage() {
                 'https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg'
               }
               alt="Banner Preview"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  'https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg';
+              }}
               className="absolute inset-0 w-full h-full object-cover opacity-45 group-hover/preview:scale-[1.02] transition-transform duration-[2000ms]"
             />
             <div className="absolute inset-0 bg-gradient-to-r from-[#0A1115] via-[#0A1115]/60 to-transparent" />

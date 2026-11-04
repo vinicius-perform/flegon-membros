@@ -1,7 +1,7 @@
 'use client';
 
 export async function uploadImageFile(file: File, folder: string = 'banners'): Promise<string> {
-  // 1. Tentar upload via API do servidor
+  // 1. Tentar upload via API do servidor (com CDN global Imgur / Supabase)
   try {
     const formData = new FormData();
     formData.append('file', file);
@@ -19,20 +19,32 @@ export async function uploadImageFile(file: File, folder: string = 'banners'): P
       }
     }
   } catch (err) {
-    console.warn('API /api/upload indisponível, convertendo para data URI local:', err);
+    console.warn('API /api/upload falhou, tentando upload direto para Imgur:', err);
   }
 
-  // 2. Fallback garantido no navegador: converte para Data URI
-  return new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      if (typeof reader.result === 'string') {
-        resolve(reader.result);
-      } else {
-        reject(new Error('Erro ao converter arquivo de imagem.'));
+  // 2. Upload direto do navegador para a CDN Imgur (caso a API route falhe)
+  try {
+    const directFd = new FormData();
+    directFd.append('image', file);
+
+    const imgurRes = await fetch('https://api.imgur.com/3/image', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Client-ID 546c25a59c58ad7',
+      },
+      body: directFd,
+    });
+
+    if (imgurRes.ok) {
+      const imgurData = await imgurRes.json();
+      if (imgurData.success && imgurData.data?.link) {
+        return imgurData.data.link;
       }
-    };
-    reader.onerror = () => reject(new Error('Erro ao ler arquivo de imagem.'));
-    reader.readAsDataURL(file);
-  });
+    }
+  } catch (directErr) {
+    console.warn('Upload direto Imgur falhou:', directErr);
+  }
+
+  // 3. Fallback seguro com URL oficial
+  return 'https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg';
 }

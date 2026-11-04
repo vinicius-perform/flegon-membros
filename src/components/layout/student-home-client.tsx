@@ -85,6 +85,12 @@ export default function StudentHomeClient({
   config: any;
   modulesToUse: any[];
 }) {
+  const rawImageUrl = config?.banner_image_url;
+  const safeBannerImage =
+    !rawImageUrl || rawImageUrl.startsWith('/uploads/')
+      ? 'https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg'
+      : rawImageUrl;
+
   const banner = {
     title: config?.banner_title || 'FLEGON DAVID',
     titleColor: config?.banner_title_color || '#F5F3EF',
@@ -94,9 +100,7 @@ export default function StudentHomeClient({
       config?.banner_subtitle ||
       'Aperfeiçoamento médico e refinamento técnico cirúrgico de alto nível com o Dr. Flegon David.',
     buttonText: config?.banner_button_text || 'INICIAR JORNADA',
-    imageUrl:
-      config?.banner_image_url ||
-      'https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg',
+    imageUrl: safeBannerImage,
   };
 
   const sections = config?.sections || [
@@ -122,6 +126,10 @@ export default function StudentHomeClient({
             src={banner.imageUrl}
             alt="Dr. Flegon David"
             decoding="async"
+            onError={(e: any) => {
+              e.target.src =
+                'https://jornalocandeeiro.com.br/painel/app/images/blogCapa/54651/Foto%20-%20Divulga%C3%A7%C3%A3o_Ascom%20HCRSF%20(3).jpeg';
+            }}
             className="w-full h-full object-cover pointer-events-none"
           />
           {/* Gradients to blend smoothly with Flegon dark palette */}
