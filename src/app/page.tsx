@@ -13,6 +13,7 @@ import { FlegonLogo } from '@/components/ui/flegon-logo';
 import { supabase } from '@/lib/supabase';
 import { setSessionAction } from './actions';
 import { registerAccessRequestAction } from './actions/register-action';
+import { authenticateUserAction } from './admin/students/actions';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -34,132 +35,12 @@ export default function LoginPage() {
     const cleanPassword = password.trim();
 
     try {
-      // 1. CREDENCIAL TESTE ADMIN (ATIVO NO CÓDIGO)
-      const isAdminTest =
-        cleanEmail === 'admin@flegon.com' ||
-        cleanEmail === 'admin' ||
-        (cleanEmail === 'bruna@sbh.com' && cleanPassword === '252501as') ||
-        cleanEmail === 'diego@sbh.com';
-
-      if (isAdminTest) {
-        // Tenta sincronizar com Supabase se disponível, sem travar caso esteja offline/placeholder
-        try {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: cleanEmail.includes('@') ? cleanEmail : 'admin@flegon.com',
-            password: cleanPassword || 'flegon2026',
-          });
-
-          let authUserId = signInData?.user?.id;
-
-          if (signInError) {
-            const { data: signUpData } = await supabase.auth.signUp({
-              email: cleanEmail.includes('@') ? cleanEmail : 'admin@flegon.com',
-              password: cleanPassword || 'flegon2026',
-            });
-            authUserId = signUpData?.user?.id;
-          }
-
-          if (authUserId) {
-            await supabase.from('users').upsert({
-              id: authUserId,
-              email: cleanEmail.includes('@') ? cleanEmail : 'admin@flegon.com',
-              name: 'Dr. Flegon David (Admin)',
-              password: cleanPassword || 'flegon2026',
-              role: 'admin',
-              approval_status: 'approved',
-            }, { onConflict: 'id' });
-          }
-        } catch {
-          // Ignora falhas de conexão remota ao Supabase no mock local
-        }
-
-        await setSessionAction('admin');
-        router.push('/admin/dashboard');
-        return;
+      const authRes = await authenticateUserAction(cleanEmail, cleanPassword);
+      if (!authRes.success) {
+        throw new Error(authRes.error || 'Credenciais inválidas. Verifique seus dados.');
       }
 
-      // 2. CREDENCIAL TESTE MEMBRO / ALUNO NORMAL (ATIVO NO CÓDIGO)
-      const isStudentTest =
-        cleanEmail === 'membro@flegon.com' ||
-        cleanEmail === 'aluno@flegon.com' ||
-        cleanEmail === 'aluno@sbh.com' ||
-        cleanEmail === 'aluno' ||
-        cleanEmail === 'membro';
-
-      if (isStudentTest) {
-        try {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email: cleanEmail.includes('@') ? cleanEmail : 'membro@flegon.com',
-            password: cleanPassword || 'flegon2026',
-          });
-
-          let authUserId = signInData?.user?.id;
-
-          if (signInError) {
-            const { data: signUpData } = await supabase.auth.signUp({
-              email: cleanEmail.includes('@') ? cleanEmail : 'membro@flegon.com',
-              password: cleanPassword || 'flegon2026',
-            });
-            authUserId = signUpData?.user?.id;
-          }
-
-          if (authUserId) {
-            await supabase.from('users').upsert({
-              id: authUserId,
-              email: cleanEmail.includes('@') ? cleanEmail : 'membro@flegon.com',
-              name: 'Dr. Membro Flegon',
-              password: cleanPassword || 'flegon2026',
-              role: 'student',
-              plan_type: 'premium',
-              approval_status: 'approved',
-            }, { onConflict: 'id' });
-          }
-        } catch {
-          // Ignora falhas de conexão remota ao Supabase no mock local
-        }
-
-        await setSessionAction('student');
-        router.push('/app/home');
-        return;
-      }
-
-      // 3. FLUXO PADRÃO SUPABASE AUTH PARA OUTROS USUÁRIOS
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: cleanEmail,
-        password: cleanPassword,
-      });
-
-      if (signInError) throw new Error('Credenciais inválidas. Verifique os dados e tente novamente.');
-
-      const { data: userProfile, error: profileError } = await supabase
-        .from('users')
-        .select('role, approval_status')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profileError && profileError.code !== 'PGRST116') {
-        console.error('Erro ao checar perfil:', profileError);
-      }
-
-      if (userProfile) {
-        if (userProfile.approval_status === 'pending') {
-          await supabase.auth.signOut();
-          throw new Error('Sua conta ainda está em análise pela equipe do Dr. Flegon David. Aguarde a aprovação.');
-        }
-        if (userProfile.approval_status === 'rejected') {
-          await supabase.auth.signOut();
-          throw new Error('Acesso não aprovado. Entre em contato com o suporte para mais informações.');
-        }
-      }
-
-      const role = userProfile?.role === 'admin' ? 'admin' : 'student';
-      await setSessionAction(role);
-
-      if (role === 'admin') {
-        router.push('/admin/dashboard');
-      } else {
-        router.push('/app/home');
-      }
+      router.push(authRes.redirect || '/app/home');
     } catch (err: any) {
       setError(err.message || 'Erro ao realizar login.');
     } finally {

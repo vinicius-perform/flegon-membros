@@ -1,25 +1,29 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PlaySquare, Users, Video, BookOpenCheck, TrendingUp, AlertCircle } from 'lucide-react';
-
-import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
+import { getModulesAction } from '@/app/admin/modules/actions';
+import { getStudentsAction } from '@/app/admin/students/actions';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 15;
+export const revalidate = 0;
 
 export default async function AdminDashboard() {
-  const [{ count: modulesCount }, { count: lessonsCount }, { count: usersCount }, { data: latestUsers }] = await Promise.all([
-    supabase.from('modules').select('*', { count: 'exact', head: true }),
-    supabase.from('lessons').select('*', { count: 'exact', head: true }),
-    supabase.from('users').select('*', { count: 'exact', head: true }),
-    supabase.from('users').select('id, name, email, created_at').order('created_at', { ascending: false }).limit(5),
+  const [modules, students] = await Promise.all([
+    getModulesAction(),
+    getStudentsAction(),
   ]);
 
+  const modulesCount = modules?.length || 0;
+  const lessonsCount = modules?.reduce((acc: number, m: any) => acc + (m.lessons?.length || 0), 0) || 0;
+  const usersCount = students?.length || 0;
+  const latestUsers = students?.slice(0, 5) || [];
+
   const stats = [
-    { title: 'Gestão de Módulos', value: modulesCount ?? 0, icon: PlaySquare, description: 'Módulos estruturados', trend: 'Ativos' },
-    { title: 'Comunidade Médica', value: usersCount ?? 0, icon: Users, description: 'Médicos inscritos', trend: 'Verificado' },
-    { title: 'Acervo de Aulas', value: lessonsCount ?? 0, icon: Video, description: 'Aulas publicadas', trend: 'Auditado' },
-    { title: 'Novas Matrículas', value: 0, icon: BookOpenCheck, description: 'Nas últimas 24h', trend: 'Estável' },
+    { title: 'Gestão de Módulos', value: modulesCount, icon: PlaySquare, description: 'Módulos estruturados', trend: 'Ativos' },
+    { title: 'Comunidade Médica', value: usersCount, icon: Users, description: 'Médicos e alunos', trend: 'Verificado' },
+    { title: 'Acervo de Aulas', value: lessonsCount, icon: Video, description: 'Aulas publicadas', trend: 'Auditado' },
+    { title: 'Novas Matrículas', value: latestUsers.filter((u: any) => u.approval_status === 'pending').length, icon: BookOpenCheck, description: 'Pendentes de aprovação', trend: 'Auditoria' },
   ];
 
   return (
@@ -34,8 +38,16 @@ export default async function AdminDashboard() {
           <p className="text-[#A6ACAF] text-xs mt-1">Gerenciamento estratégico da plataforma Flegon Members.</p>
         </div>
         <div className="flex gap-2.5">
-           <Button variant="outline" size="sm" className="text-[10px] tracking-wider font-semibold uppercase">RELATÓRIO</Button>
-           <Button variant="premium" size="sm" className="text-[10px] tracking-wider font-semibold uppercase">NOVO MÓDULO</Button>
+          <Link href="/admin/students">
+            <Button variant="outline" size="sm" className="text-[10px] tracking-wider font-semibold uppercase">
+              VER MEMBROS
+            </Button>
+          </Link>
+          <Link href="/admin/modules">
+            <Button variant="premium" size="sm" className="text-[10px] tracking-wider font-semibold uppercase">
+              NOVO MÓDULO
+            </Button>
+          </Link>
         </div>
       </div>
 
@@ -71,8 +83,8 @@ export default async function AdminDashboard() {
                 <CardDescription className="text-[#A6ACAF] text-xs">Acompanhamento de acessos médicos</CardDescription>
               </div>
               <div className="flex gap-2">
-                 <div className="h-2 w-2 rounded-full bg-[#BFA783]" />
-                 <div className="h-2 w-2 rounded-full bg-[#1D292F]" />
+                <div className="h-2 w-2 rounded-full bg-[#BFA783]" />
+                <div className="h-2 w-2 rounded-full bg-[#1D292F]" />
               </div>
             </div>
           </CardHeader>
@@ -96,7 +108,7 @@ export default async function AdminDashboard() {
             <div className="divide-y divide-[#695C49]/20">
               {!latestUsers || latestUsers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-[#A6ACAF]">
-                  <AlertCircle className="h-8 w-8 mb-2 opacity-30" />
+                  <AlertCircle className="h-8 w-8 mb-2 opacity-30 text-[#BFA783]" />
                   <p className="text-[10px] uppercase tracking-widest font-semibold">Nenhum registro encontrado</p>
                 </div>
               ) : (
@@ -110,8 +122,12 @@ export default async function AdminDashboard() {
                       <p className="text-[10px] text-[#A6ACAF] truncate">{user.email}</p>
                     </div>
                     <div className="text-right">
-                       <p className="text-[8px] font-semibold text-[#A6ACAF]/70 uppercase tracking-tighter">Entrou em</p>
-                       <p className="text-[9px] text-[#BFA783] font-medium">{new Date(user.created_at).toLocaleDateString('pt-BR')}</p>
+                      <p className="text-[8px] font-semibold text-[#A6ACAF]/70 uppercase tracking-tighter">
+                        {user.approval_status === 'pending' ? 'Pendente' : 'Membro'}
+                      </p>
+                      <p className="text-[9px] text-[#BFA783] font-medium">
+                        {user.created_at ? new Date(user.created_at).toLocaleDateString('pt-BR') : 'Hoje'}
+                      </p>
                     </div>
                   </div>
                 ))
@@ -119,7 +135,11 @@ export default async function AdminDashboard() {
             </div>
           </CardContent>
           <div className="p-3 border-t border-[#695C49]/20 bg-[#1D292F]/30">
-             <Button variant="ghost" className="w-full text-[9px] tracking-widest font-semibold h-9 uppercase hover:bg-[#1D292F]">VER TODOS OS ALUNOS</Button>
+            <Link href="/admin/students" className="block w-full">
+              <Button variant="ghost" className="w-full text-[9px] tracking-widest font-semibold h-9 uppercase hover:bg-[#1D292F] text-[#A6ACAF]">
+                VER TODOS OS ALUNOS
+              </Button>
+            </Link>
           </div>
         </Card>
       </div>

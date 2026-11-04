@@ -1,0 +1,31 @@
+[
+  {
+    "id": "usr-admin",
+    "name": "Dr. Flegon David",
+    "email": "admin@flegon.com",
+    "role": "admin",
+    "plan_type": "premium",
+    "approval_status": "approved",
+    "crm": "CRM 12345/SP",
+    "created_at": "2026-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "usr-membro",
+    "name": "Dr. Membro Flegon",
+    "email": "membro@flegon.com",
+    "role": "student",
+    "plan_type": "premium",
+    "approval_status": "approved",
+    "crm": "CRM 54321/SP",
+    "created_at": "2026-02-01T00:00:00.000Z"
+  },
+  {
+    "id": "usr-1793814789819",
+    "name": "Vinicius Marinho",
+    "email": "viniciusmarinhods@gmail.com",
+    "role": "student",
+    "plan_type": "basic",
+    "approval_status": "pending",
+    "created_at": "2026-11-04T17:53:09.819Z"
+  }
+]
